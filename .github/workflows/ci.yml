@@ -79,6 +79,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      - name: 安装门禁脚本依赖
+        run: pip install pyyaml
       - name: openapi 契约门禁（含 owner 侧 schema 注入断言）
         run: python docs/scripts/verify-openapi.py
       - name: 跨文档一致性门禁（反引号 / §引用 / 术语冲突）

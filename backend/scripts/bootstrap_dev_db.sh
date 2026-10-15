@@ -35,7 +35,14 @@ GRANT CONNECT ON DATABASE opcagentai_test TO opc_app, opc_migrate;
 GRANT USAGE ON SCHEMA public TO opc_app, opc_migrate;
 SQL
 
-echo "[3/4] 授权（应用角色只 DML，审计表 append-only）"
+echo "[3/4] Alembic 迁移（先建表，授权必须在表存在之后 —— CI 全新库曾因顺序反了报 audit_logs 不存在）"
+DATABASE_MIGRATION_URL="${DATABASE_MIGRATION_URL:-postgresql+asyncpg://opc_migrate:opc_migrate_dev@${PGHOST:-127.0.0.1}:${PGPORT:-5432}/${DB_NAME}}" \
+DATABASE_URL="${DATABASE_URL:-postgresql+asyncpg://opc_app:opc_app_dev@${PGHOST:-127.0.0.1}:${PGPORT:-5432}/${DB_NAME}}" \
+JWT_SECRET="${JWT_SECRET:-test-secret-test-secret-test-secret-32}" \
+CREDENTIAL_KEK="${CREDENTIAL_KEK:-dGVzdC10ZXN0LXRlc3QtdGVzdC10ZXN0LXRlc3QtdGVzdDEyMzQ1Njc4OTA=}" \
+python -m alembic upgrade head
+
+echo "[4/4] 授权（应用角色只 DML，审计表 append-only）"
 "${PSQL[@]}" -d "${DB_NAME}" <<'SQL'
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO opc_app;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO opc_migrate;
@@ -44,12 +51,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE opc_migrate IN SCHEMA public
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO opc_app, opc_migrate;
 REVOKE UPDATE, DELETE ON audit_logs FROM opc_app;
 SQL
-
-echo "[4/4] Alembic 迁移"
-DATABASE_MIGRATION_URL="${DATABASE_MIGRATION_URL:-postgresql+asyncpg://opc_migrate:opc_migrate_dev@127.0.0.1:5432/${DB_NAME}}" \
-DATABASE_URL="${DATABASE_URL:-postgresql+asyncpg://opc_app:opc_app_dev@127.0.0.1:5432/${DB_NAME}}" \
-JWT_SECRET="${JWT_SECRET:-test-secret-test-secret-test-secret-32}" \
-CREDENTIAL_KEK="${CREDENTIAL_KEK:-dGVzdC10ZXN0LXRlc3QtdGVzdC10ZXN0LXRlc3QtdGVzdDEyMzQ1Njc4OTA=}" \
-python -m alembic upgrade head
 
 echo "[OK] 环境就绪：${DB_NAME}"
