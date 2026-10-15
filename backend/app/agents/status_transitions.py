@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 from app.core.logging import get_logger
 from app.repositories.event_repo import GoalEventRepository
 from app.repositories.goal_repo import GoalRepository
+from app.repositories.pending_repo import PendingItemRepository
 from app.repositories.step_repo import TaskStepRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -73,7 +74,14 @@ class StatusTransitions:
             visibility="owner",
         )
 
-    async def set_soft_pause(self, goal_id: uuid.UUID, user_message: str) -> None:
+    async def set_soft_pause(
+        self,
+        goal_id: uuid.UUID,
+        user_message: str,
+        *,
+        step_title: str = "",
+        step_ordinal: int = 0,
+    ) -> None:
         """软阈值暂停（HITL）。
 
         【需资深】租户级上限：同一租户同时处于 waiting_approval 的任务超过
@@ -92,6 +100,17 @@ class StatusTransitions:
         await self._update(goal_id, status="waiting_approval")
         await self._event(
             goal_id, "needs_human_input", {"user_message": user_message}, visibility="owner"
+        )
+        # 写入待确认队列（「要你管」板块的数据源）。
+        # kind 恒为 needs_human_input：熔断不进队列（ADR-018）。
+        goal = await repo.get(tenant_id=self.tenant_id, goal_id=goal_id)
+        await PendingItemRepository(self.session).create(
+            tenant_id=self.tenant_id,
+            goal_id=goal_id,
+            agent_id=goal.agent_id,
+            payload={"user_message": user_message},
+            evidence_ref=[],
+            stopped_step=(step_title or None),
         )
 
     async def _update(

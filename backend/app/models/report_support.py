@@ -32,6 +32,9 @@ class PendingItem(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     # 依据行：每条必须含（引用文件与位置），否则「问问题等于甩锅」
     evidence_ref: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
+    # 停在哪一步（业务语言步骤标题，如「读取竞品页面 7/10」）——暂停那一刻写入，
+    # 事后无法从 goal 反推（步骤标题可能随输入变化）
+    stopped_step: Mapped[str | None] = mapped_column(String(200), nullable=True)
     status: Mapped[str] = mapped_column(String(16), server_default=text("'pending'"), nullable=False)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

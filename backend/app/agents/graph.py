@@ -102,10 +102,16 @@ class CircuitBreakSignal(Exception):
 
 
 class SoftPauseSignal(Exception):
-    """软暂停信号（拉人确认，ADR-011 §2）。"""
+    """软暂停信号（拉人确认，ADR-011 §2）。
 
-    def __init__(self, user_message: str) -> None:
+    step_title / step_ordinal 随信号携带：PendingItem 的「停在哪一步」必须用
+    暂停那一刻的业务步骤标题，事后无法从 goal 反推（步骤标题可能随输入变化）。
+    """
+
+    def __init__(self, user_message: str, *, step_title: str = "", step_ordinal: int = 0) -> None:
         self.user_message = user_message
+        self.step_title = step_title
+        self.step_ordinal = step_ordinal
         super().__init__(user_message)
 
 
@@ -170,7 +176,9 @@ def _add_step_node(
         if verdict.level == "circuit_break":
             raise CircuitBreakSignal(verdict.reason, verdict.user_message)
         if verdict.level == "soft_pause":
-            raise SoftPauseSignal(verdict.user_message)
+            raise SoftPauseSignal(
+                verdict.user_message, step_title=step.title, step_ordinal=step.ordinal
+            )
 
         # 3) 真正执行（LLM 调用在节点内部，F6-5）
         ctx = GraphContext(

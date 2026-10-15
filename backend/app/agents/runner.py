@@ -169,7 +169,12 @@ class GoalRunner:
         except SoftPauseSignal as exc:
             await self._transition(
                 goal_id,
-                partial(StatusTransitions.set_soft_pause, user_message=exc.user_message),
+                partial(
+                    StatusTransitions.set_soft_pause,
+                    user_message=exc.user_message,
+                    step_title=exc.step_title,
+                    step_ordinal=exc.step_ordinal,
+                ),
             )
             return GoalRunResult(
                 "waiting_approval", reason="soft_pause", user_message=exc.user_message
