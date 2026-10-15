@@ -126,15 +126,15 @@ jobs:
         run: |
           echo "总失败数: ${TOTAL_FAIL:-?}"
           # v2 判定（五轮 POC 实测后裁定，见 SANDBOX-POC.md §结论）：
-          # 兼容性场景（17 个功能场景）必须全绿 —— 这是沙箱选型的硬门槛；
-          # P9/N9/N10 资源限额反向断言在 GitHub runner 上无法机器验证
+          # TOTAL_FAIL 只含兼容性场景（P9/N9/N10 限额断言已剥离进 LIMIT_FAIL 单独计数），
+          # 必须全绿 —— 这是沙箱选型的硬门槛；
+          # 限额反向断言在 GitHub runner 上无法机器验证
           # （runsc --systemd-cgroup 已配置仍不生效，runner cgroup 环境限制），
           # 移交部署阶段门禁：生产同构环境必须复跑这三条，限额不生效不得上线。
-          COMPAT_FAIL=$((TOTAL_FAIL))
-          if [ -n "$LIMIT_FAIL" ]; then COMPAT_FAIL=$((TOTAL_FAIL - LIMIT_FAIL)); fi
+          COMPAT_FAIL=${TOTAL_FAIL:-99}
           echo "兼容性失败: ${COMPAT_FAIL} / 限额失败: ${LIMIT_FAIL:-0}（移交部署阶段验证）"
           if [ "$COMPAT_FAIL" -eq 0 ]; then
-            echo "兼容性 17/17 全绿 → 锁定 gVisor；限额断言转部署阶段门禁（ADR 待补）"
+            echo "兼容性全绿 → 锁定 gVisor；限额断言转部署阶段门禁（ADR 待补）"
           else
             echo "兼容性场景失败 ${COMPAT_FAIL} 个 → 按原判定标准处理"
             exit 1
