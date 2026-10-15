@@ -1297,6 +1297,13 @@ export interface paths {
                         input: string;
                         /** Format: uuid */
                         conversation_id?: string | null;
+                        /**
+                         * Format: uuid
+                         * @description 资产中心已上传文件的引用（岗位 #4 客户跟进催办等表格类输入）。
+                         *     表格类岗位以此引用上传的 CSV/xlsx；解析后的结构化记录随
+                         *     input_payload 一并传入执行器，来源行号（row）是催办建议的溯源锚点。
+                         */
+                        input_asset_id?: string | null;
                     };
                 };
             };

@@ -15,6 +15,8 @@ class CreateGoalRequest(BaseModel):
     input: str = Field(min_length=1, max_length=4000)
     conversation_id: uuid.UUID | None = None
     urls: list[str] = Field(default_factory=list, max_length=20)
+    # 资产中心已上传文件的引用（岗位 #4 客户跟进催办等表格类输入，openapi 已约定）
+    input_asset_id: uuid.UUID | None = None
 
 
 async def create_goal(body: CreateGoalRequest, user: AuthUser, session: TenantSession) -> ApiResponse:
@@ -24,7 +26,11 @@ async def create_goal(body: CreateGoalRequest, user: AuthUser, session: TenantSe
         agent_id=body.agent_id,
         user_id=user.user_id,
         title=body.input,
-        input_payload={"input": body.input, "urls": body.urls},
+        input_payload={
+            "input": body.input,
+            "urls": body.urls,
+            "input_asset_id": str(body.input_asset_id) if body.input_asset_id else None,
+        },
     )
     # 预估以**区间 + 偏差说明**返回，绝不冒充精确报价（坑 13 / AC-E3）
     return {
