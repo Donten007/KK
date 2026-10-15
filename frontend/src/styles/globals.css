@@ -134,3 +134,121 @@ body {
 .nextjs-portal {
   display: none;
 }
+
+/* ==========================================================================
+   营销页应用层（docs/UIUX-marketing.md）—— 仅作用于 [data-marketing="true"]
+   --------------------------------------------------------------------------
+   design-tokens.css Section 13 已提供组件原语（.mkt-canvas / .mkt-glass /
+   .mkt-cta / .mkt-input）。本文件只补四块应用级规则，颜色全部走 --mkt-*：
+     1. display 标题阶梯（§4.1 三档负字距 + §6 响应式降档）
+     2. 光晕 <768px 椭圆缩小 30%（§6）
+     3. 全页唯一动效：卡片 200ms opacity 淡入（§7）
+     4. WorkbenchPreview 预览条 token 局部重映射 + 静态化（§2.3）
+   ========================================================================== */
+
+/* --- 1a. display 标题：590 字重锁定，64/48/36 三档（§4.1） --- */
+[data-marketing='true'] .mkt-display {
+  font-weight: var(--weight-semibold);
+  color: var(--mkt-fg-1);
+  text-align: center;
+  font-size: var(--mkt-text-display-md);
+  line-height: var(--mkt-lh-display-md);
+  letter-spacing: var(--mkt-ls-display-md);
+}
+@media (min-width: 768px) {
+  [data-marketing='true'] .mkt-display {
+    font-size: var(--mkt-text-display-lg);
+    line-height: var(--mkt-lh-display-lg);
+    letter-spacing: var(--mkt-ls-display-lg);
+  }
+}
+@media (min-width: 1280px) {
+  [data-marketing='true'] .mkt-display {
+    font-size: var(--mkt-text-display-xl);
+    line-height: var(--mkt-lh-display-xl);
+    letter-spacing: var(--mkt-ls-display-xl);
+  }
+}
+/* §6 <480px：局部覆盖 display-md（内联值，来源指向本节） */
+@media (max-width: 479px) {
+  [data-marketing='true'] .mkt-display {
+    font-size: 32px;
+    line-height: 40px;
+  }
+}
+
+/* --- 1b. 副标题 lead：18px/30px（§4.1），<480px 降 16px/26px（§6） --- */
+[data-marketing='true'] .mkt-lead {
+  color: var(--mkt-fg-2);
+  text-align: center;
+  font-size: 16px;
+  line-height: 26px;
+}
+@media (min-width: 480px) {
+  [data-marketing='true'] .mkt-lead {
+    font-size: var(--mkt-text-lead);
+    line-height: var(--mkt-lh-lead);
+  }
+}
+
+/* --- 2. 光晕 <768px 缩小 30%：900x600→630x420 / 700x500→490x350（§6）。
+       层序与 Section 13 .mkt-canvas 完全一致，只改椭圆尺寸；仍为静态。 --- */
+@media (max-width: 767px) {
+  [data-marketing='true'] .mkt-canvas {
+    background:
+      radial-gradient(ellipse 630px 420px at 75% 10%,
+        color-mix(in srgb, var(--mkt-glow-primary) 30%, transparent), transparent 60%),
+      radial-gradient(ellipse 490px 350px at 10% 90%,
+        color-mix(in srgb, var(--mkt-glow-secondary) 20%, transparent), transparent 55%),
+      linear-gradient(180deg, var(--mkt-bg-elev) 0%, var(--mkt-bg) 62%);
+  }
+}
+
+/* --- 3. 全页唯一动效：卡片 200ms opacity 淡入（单元素单属性，§7）。
+       prefers-reduced-motion 由 design-tokens.css Section 11 全局降级。 --- */
+@keyframes mkt-card-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+[data-marketing='true'] .mkt-card-in {
+  animation: mkt-card-in var(--motion-base) var(--ease-out) both;
+}
+
+/* --- 4. 预览条（§2.3）：WorkbenchPreview 组件**零改动**，在其容器把
+       workspace 语义 token 局部重映射为 --mkt-* 值，两寄存器不互串。
+       85% 透明度 + 1px 玻璃边框；静态展示——旋转图标停用
+       （MOTION_INTENSITY=2，全页唯一动效是卡片淡入）。 --- */
+[data-marketing='true'] .mkt-preview {
+  --surface-2: var(--mkt-input-bg);
+  --surface-hover: var(--mkt-input-bg);
+  --fg-1: var(--mkt-fg-1);
+  --fg-2: var(--mkt-fg-2);
+  --muted: var(--mkt-fg-muted);
+  --accent: var(--mkt-focus-ring);
+  --border: var(--mkt-glass-border);
+  opacity: 0.85;
+  border: 1px solid var(--mkt-glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--mkt-card-padding);
+}
+[data-marketing='true'] .mkt-preview .icon-spin {
+  animation: none;
+}
+
+/* 表单级错误条底色（§9）：danger 的 10% 透明底，alpha 只在 CSS 施加，
+   token 本体保持实色（§3.3 color-mix 纪律） */
+[data-marketing='true'] .mkt-error-bar {
+  background: color-mix(in srgb, var(--mkt-danger) 10%, transparent);
+}
+
+/* 导航通栏（§4.2）：mkt-glass 原语用于导航时去掉圆角与侧/顶边框，只留底部 hairline */
+[data-marketing='true'] .mkt-nav {
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+}
