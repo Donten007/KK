@@ -39,3 +39,5 @@ Thumbs.db
 coverage/
 htmlcov/
 jobs_tmp.json
+rid.txt
+jt.json
