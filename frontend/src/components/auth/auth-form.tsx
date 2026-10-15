@@ -9,7 +9,8 @@
  *   - 错误三通道（§4.5）：红边 + CircleAlert 图标 + 具体文案，不只红边；
  *   - 网络失败（§9）：卡内内联错误条 + 重试按钮（--radius-md 次级，非胶囊），
  *     不用 toast；
- *   - 登录失败不清邮箱，只就地提示——多租户高频输入，保留已填内容。
+ *   - 登录失败（1002）按拍板口径：保留邮箱（高频输入），只清密码；
+ *     文案「邮箱或密码不正确」（spec v1.1.1 §9，后端 auth_service 同源）。
  *
  * BYOK 语境：注册表单**不放**任何充值/额度/套餐相关文案（功能不存在）。
  */
@@ -86,9 +87,18 @@ export function AuthForm({ mode }: { mode: Mode }) {
         setFormError('连不上服务器，检查网络后重试。');
         setNetworkError(true);
       } else if (error instanceof ApiError) {
-        setFormError(error.message);
-        // 凭证错误就地提示，不清空用户已填内容（重新输入是老板最烦的事）
-        if (error.code === 1001) setPasswordError(error.message);
+        if (mode === 'login' && error.code === 1002) {
+          // 登录失败口径（spec v1.1.1 §4.5/§9 + 总监拍板）：登录语境下后端 1002
+          // 就是凭证错误（auth_service 抛「邮箱或密码不正确」）。客户端 ERROR_MESSAGES
+          // 会把 1002 覆盖成「登录已失效」，在登录表单语境不成立，这里按 spec 落文案。
+          // 保留邮箱（高频输入），只清密码（安全惯例 + 只清密码口径）。
+          setPasswordError('邮箱或密码不正确。');
+          setPassword('');
+        } else {
+          setFormError(error.message);
+          // 后端校验错误就地提示，不清空用户已填内容（重新输入是老板最烦的事）
+          if (error.code === 1001) setPasswordError(error.message);
+        }
       } else {
         setFormError('连不上服务器，检查网络后重试。');
         setNetworkError(true);
