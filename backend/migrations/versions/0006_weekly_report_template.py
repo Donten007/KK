@@ -47,6 +47,8 @@ def upgrade() -> None:
 
     row = _template_row(WEEKLY_REPORT_TEMPLATE)
     # 幂等：模板已存在则跳过（重复执行迁移不报错）
+    # 【需资深】op.execute 的第二位置参数是 execution_options 不是 bind params，
+    # 参数必须用 .bindparams() 链在 text 上（CI 首跑曾因传法错误 TypeError）
     op.execute(
         sa.text(
             """
@@ -65,8 +67,7 @@ def upgrade() -> None:
             )
             ON CONFLICT (code) DO NOTHING
             """
-        ),
-        row,
+        ).bindparams(**row)
     )
 
 
@@ -74,6 +75,7 @@ def downgrade() -> None:
     from app.jobs.weekly_report import WEEKLY_REPORT_TEMPLATE
 
     op.execute(
-        sa.text("DELETE FROM job_templates WHERE code = :code"),
-        {"code": WEEKLY_REPORT_TEMPLATE["code"]},
+        sa.text("DELETE FROM job_templates WHERE code = :code").bindparams(
+            code=WEEKLY_REPORT_TEMPLATE["code"]
+        ),
     )
