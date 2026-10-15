@@ -31,6 +31,7 @@ dependencies = [
     "cryptography==50.0.2",
     "email-validator==2.3.0",
     "lxml==6.1.3",
+    "openpyxl==3.1.5",
 ]
 
 [project.optional-dependencies]
@@ -88,8 +89,8 @@ module = ["langgraph.*", "langgraph_checkpoint_postgres.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["lxml.*"]
-# lxml 无官方类型存根（lxml-stubs 未纳入锁版本），本模块已自行标注关键签名
+module = ["lxml.*", "openpyxl.*"]
+# lxml / openpyxl 无官方类型存根，本模块已自行标注关键签名
 ignore_missing_imports = true
 
 # ---- pytest ----
