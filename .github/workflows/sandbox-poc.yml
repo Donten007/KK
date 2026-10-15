@@ -20,13 +20,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 安装 gVisor runsc（带重试：runner DNS 瞬断曾致首跑失败）
+      - name: 安装 gVisor runsc（apt 为主 + tarball 后备）
         run: |
+          set -e
+          # key 从官方域名 gvisor.dev 下载 —— 旧 gvisor.sh 已废弃（runner DNS 曾解析失败致前两跑挂）
           curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-            https://gvisor.sh/archive.key | sudo gpg --dearmor -o /usr/share/keyrings/gvisor-archive-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/gvisor-archive-keyring.gpg] https://storage.googleapis.com/gvisor/releases release/main main" | sudo tee /etc/apt/sources.list.d/gvisor.list
-          sudo apt-get update -o Acquire::Retries=5 && sudo apt-get install -y runsc
-          sudo runsc install
+            https://gvisor.dev/archive.key | sudo gpg --dearmor -o /usr/share/keyrings/gvisor-archive-keyring.gpg
+          # 官方 suites 是「release main」，不是 release/main
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/gvisor-archive-keyring.gpg] https://storage.googleapis.com/gvisor/releases release main" | sudo tee /etc/apt/sources.list.d/gvisor.list > /dev/null
+          if sudo apt-get update -o Acquire::Retries=5 && sudo apt-get install -y runsc; then
+            echo "apt 安装成功"
+          else
+            echo "apt 失败，回退 tarball 直装（2026-07 起多文件发布，见官方 issue #13718）"
+            URL=https://storage.googleapis.com/gvisor/releases/release/latest/x86_64
+            curl -fsSL --retry 5 --retry-all-errors -o gvisor.tar.zstd "$URL/gvisor.tar.zstd"
+            curl -fsSL --retry 5 --retry-all-errors -o gvisor.tar.zstd.sha512 "$URL/gvisor.tar.zstd.sha512"
+            sha512sum -c gvisor.tar.zstd.sha512
+            sudo tar --zstd -xf gvisor.tar.zstd -C /usr/local/bin
+            rm -f gvisor.tar.zstd gvisor.tar.zstd.sha512
+          fi
+          sudo /usr/local/bin/runsc install || sudo runsc install
           sudo systemctl restart docker
 
       - name: 验证 runsc 生效

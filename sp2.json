@@ -1,0 +1,105 @@
+{
+  "total_count": 1,
+  "jobs": [
+    {
+      "id": 116399225059,
+      "run_id": 38728218486,
+      "workflow_name": "sandbox-poc",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/Donten007/KK/actions/runs/38728218486",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOVKiY9c8AAAAbGe844w",
+      "head_sha": "a1774bd6b00fddaa47bad54b3d6787dac8de4bd8",
+      "url": "https://api.github.com/repos/Donten007/KK/actions/jobs/116399225059",
+      "html_url": "https://github.com/Donten007/KK/actions/runs/38728218486/job/116399225059",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-10-15T11:33:48Z",
+      "started_at": "2026-10-15T11:33:51Z",
+      "completed_at": "2026-10-15T11:34:21Z",
+      "name": "gVisor runsc 兼容 POC（10 Python + 10 Node）",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-15T11:33:52Z",
+          "completed_at": "2026-10-15T11:33:52Z"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-15T11:33:52Z",
+          "completed_at": "2026-10-15T11:33:53Z"
+        },
+        {
+          "name": "安装 gVisor runsc（带重试：runner DNS 瞬断曾致首跑失败）",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 3,
+          "started_at": "2026-10-15T11:33:53Z",
+          "completed_at": "2026-10-15T11:34:19Z"
+        },
+        {
+          "name": "验证 runsc 生效",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-15T11:34:19Z",
+          "completed_at": "2026-10-15T11:34:19Z"
+        },
+        {
+          "name": "Python 场景（P1-P10，含限额反向断言 P9/P10）",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-15T11:34:19Z",
+          "completed_at": "2026-10-15T11:34:19Z"
+        },
+        {
+          "name": "Node 场景（N1-N10，含线程 N7 与限额反向 N9/N10）",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-15T11:34:19Z",
+          "completed_at": "2026-10-15T11:34:19Z"
+        },
+        {
+          "name": "判定（SANDBOX-POC.md §三）",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-15T11:34:19Z",
+          "completed_at": "2026-10-15T11:34:19Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-10-15T11:34:19Z",
+          "completed_at": "2026-10-15T11:34:19Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-15T11:34:19Z",
+          "completed_at": "2026-10-15T11:34:19Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Donten007/KK/check-runs/116399225059",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000000037,
+      "runner_name": "GitHub Actions 1000000037",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}
