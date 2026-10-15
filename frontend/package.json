@@ -12,6 +12,8 @@
     "start": "next start",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "verify:p0": "bash scripts/verify-p0.sh",
     "verify": "npm run lint && npm run type-check && npm run verify:p0",
     "types:api": "openapi-typescript ../docs/openapi.yaml -o src/types/api.d.ts"
@@ -25,13 +27,18 @@
   "devDependencies": {
     "@eslint/eslintrc": "3.3.7",
     "@tailwindcss/postcss": "4.3.3",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
     "@types/node": "22.20.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "eslint": "9.39.5",
     "eslint-config-next": "16.4.0",
+    "jsdom": "30.1.2",
     "openapi-typescript": "7.13.0",
     "tailwindcss": "4.3.3",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
   }
 }

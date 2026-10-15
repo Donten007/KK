@@ -1,5 +1,5 @@
+import Link from 'next/link';
 import { Hand } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { buildNeedsActionBlock, type DailyReport } from './report-copy';
 
 /**
@@ -18,10 +18,8 @@ import { buildNeedsActionBlock, type DailyReport } from './report-copy';
  *
  * 因此：不用 --warn / --danger 作容器色，不用告警图标。
  *
- * [需资深] 待确认队列页 `/pending` 不在 Phase 2 范围（放行条件只覆盖
- * 汇报/岗位库/试跑）。此处按钮置 disabled 而非链到不存在的路由 ——
- * 一个点了跳 404 的入口，比一个明确告诉你"还没开放"的按钮伤害更大。
- * Phase 3 上线 /pending 后，把 Button 包进 <Link href="/pending"> 即可。
+ * 「逐件处理」跳到 /pending（Phase 3 上线）。有条目时才是真实入口，
+ * 没有条目时本板块根本不渲染 —— 不存在点了跳空的可能。
  */
 export function BlockNeedsAction({ block }: { block: DailyReport['block2_needs_action'] }) {
   const needsAction = buildNeedsActionBlock(block);
@@ -42,7 +40,17 @@ export function BlockNeedsAction({ block }: { block: DailyReport['block2_needs_a
         ) : null}
       </div>
 
-      <Button disabled title="待确认队列将在下一阶段开放">逐件处理</Button>
+      <Link
+        href="/pending"
+        className={[
+          'inline-flex min-h-[var(--tap-target)] items-center justify-center gap-2 rounded-[var(--btn-radius)] px-4',
+          'bg-[var(--accent)] text-[var(--text-sm)] text-[var(--accent-on)]',
+          'transition-colors duration-[var(--motion-fast)] ease-[var(--ease-standard)]',
+          'hover:bg-[var(--accent-hover)] active:scale-[var(--press-scale)] active:bg-[var(--accent-press)]',
+        ].join(' ')}
+      >
+        逐件处理
+      </Link>
     </div>
   );
 }

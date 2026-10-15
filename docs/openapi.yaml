@@ -2230,12 +2230,15 @@ components:
         id: { type: string, format: uuid }
         goal_id: { type: string, format: uuid }
         agent_id: { type: string, format: uuid }
-        reason: { type: string, description: '业务语言，如「我没敢填客户等级」' }
+        goal_title: { type: string, description: '关联任务名（业务语言），供 /pending 页直接渲染，避免前端逐条拉 goal 详情' }
+        stopped_step: { type: string, description: '停在哪一步（业务语言步骤标题，如「读取竞品页面 7/10」）' }
+        reason: { type: string, description: '业务语言（= needs_human_input 的 user_message），如「我没敢填客户等级」' }
         evidence:
           type: array
           items: { type: object, additionalProperties: true }
           description: '依据行，供老板判断'
         options: { type: array, items: { type: string } }
+        waiting_days: { type: integer, description: '已等待天数，升级信号。前端按此降序排序（等最久在前），禁止折叠隐藏' }
         created_at: { type: string, format: date-time }
 
     # ---- 汇报 ----

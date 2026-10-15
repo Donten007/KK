@@ -8,7 +8,8 @@
  */
 
 import { useRouter } from 'next/navigation';
-import { LogOut } from 'lucide-react';
+import Link from 'next/link';
+import { Hand, LogOut } from 'lucide-react';
 import { ThemeToggle } from './theme-toggle';
 import { logout } from '@/lib/api/auth';
 import type { components } from '@/types/api';
@@ -18,9 +19,11 @@ interface TopbarProps {
   tenantCode?: string;
   tenantName?: string;
   user?: components['schemas']['User'];
+  /** 待确认数量（真实接口数据）。为 0 时不显示角标。 */
+  pendingCount?: number;
 }
 
-export function Topbar({ tenantCode, tenantName, user }: TopbarProps) {
+export function Topbar({ tenantCode, tenantName, user, pendingCount = 0 }: TopbarProps) {
   const router = useRouter();
 
   async function handleLogout() {
@@ -43,6 +46,24 @@ export function Topbar({ tenantCode, tenantName, user }: TopbarProps) {
       </div>
 
       <div className="flex items-center gap-[var(--space-1)]">
+        {/* 待确认入口：真实接口数据，为 0 不显示。Hand = 协作不是故障（UIUX §8.2） */}
+        {pendingCount > 0 ? (
+          <Link
+            href="/pending"
+            aria-label={`${pendingCount} 件事等你确认`}
+            className={[
+              'inline-flex min-h-[var(--tap-target)] items-center gap-[var(--space-1)]',
+              'rounded-[var(--radius-sm)] px-[var(--space-2)]',
+              'text-[var(--text-sm)] text-[var(--info)]',
+              'transition-colors duration-[var(--motion-fast)] ease-[var(--ease-standard)]',
+              'hover:bg-[var(--surface-hover)]',
+            ].join(' ')}
+          >
+            <Hand size={16} strokeWidth={1.5} aria-hidden="true" />
+            <span>等你确认 {pendingCount}</span>
+          </Link>
+        ) : null}
+
         <ThemeToggle />
 
         {user?.email ? (

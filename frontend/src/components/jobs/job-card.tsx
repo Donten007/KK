@@ -74,7 +74,7 @@ export function JobCard({ template }: { template: JobTemplate }) {
   return (
     <article
       className={[
-        'flex flex-col gap-[var(--space-4)] rounded-[var(--card-radius)] bg-[var(--surface-2)]',
+        'flex h-full flex-col gap-[var(--space-4)] rounded-[var(--card-radius)] bg-[var(--surface-2)]',
         style.borderClass,
         style.paddingClass,
       ].join(' ')}
@@ -119,10 +119,11 @@ export function JobCard({ template }: { template: JobTemplate }) {
         <div className="flex items-start gap-[var(--space-2)]">
           <LockKeyhole size={16} strokeWidth={1.5} className="mt-[2px] shrink-0 text-[var(--muted)]" aria-hidden="true" />
           <p className="text-[var(--text-sm)] text-[var(--fg-2)]">
-            {/* 明确计数：高难度档要求「需完成 N 项授权：X、Y」 */}
+            {/* 「准备」而非「授权」：上岗前置可能是上传表格（周报/跟进表），
+                不全是账号授权。锁图标仍适用 —— 它表达「需要你先做点什么」。 */}
             {prerequisites.length === 1
-              ? `需完成 1 项授权：${prerequisites.join('、')}`
-              : `需完成 ${prerequisites.length} 项授权：${prerequisites.join('、')}`}
+              ? `需准备：${prerequisites.join('、')}`
+              : `需完成 ${prerequisites.length} 项准备：${prerequisites.join('、')}`}
           </p>
         </div>
       ) : (

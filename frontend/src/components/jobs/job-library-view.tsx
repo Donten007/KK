@@ -3,17 +3,24 @@
 /**
  * 岗位库页 `/jobs`。
  *
- * Phase 2 只有 1 个岗位（竞品监控日报），因此用**单卡布局**。
- * 特别注意：不写「先雇一个」这类文案 —— 「先/再/还有」暗示后面有别的，
- * Phase 2 没有。SPEC §7.1 的2+1+2 分数网格是多岗位时的布局，
- * 单岗位时用不上，也不该为了对齐网格而造第二张卡。
+ * ## 卡片数 = 已上线岗位数（禁「先雇一个」式暗示）
+ * 只有已上线的岗位出现在这里。没上线的岗位**不占位** ——
+ * 放一张「敬请期待」卡，老板分不清「功能没做」和「坏了」。
+ *
+ * ## 布局：2+1+2 分数网格（SPEC §7.5）
+ * `grid-template-columns: 1fr 1fr`，首卡跨 2 列（视觉最重）。
+ * 难度递进由边框/内边距承载（见 job-card.tsx），不由透明度表达。
  *
  * 密度 6（浏览 + 偶尔配置）。
+ *
+ * 数据源：后端 `/api/v1/job-templates` 优先；端点未就绪时用 JOB_CATALOG 兜底
+ * （岗位是平台级静态内容，不是租户数据，见 lib/jobs/catalog.ts）。
  */
 
 import { useApiResource } from '@/hooks/use-api-resource';
 import { JobCard } from '@/components/jobs/job-card';
 import { JobLibraryState } from '@/components/jobs/job-library-state';
+import { JOB_CATALOG } from '@/lib/jobs/catalog';
 import type { components } from '@/types/api';
 
 type JobTemplate = components['schemas']['JobTemplate'];
@@ -33,7 +40,9 @@ export function JobLibraryView() {
     return <JobLibraryState kind="error" message={state.error.message} onRetry={reload} />;
   }
 
-  const templates = state.data ?? [];
+  // 后端端点就绪后返回真实列表；未就绪时用平台目录兜底（不渲染假数据）。
+  const apiTemplates = state.data ?? [];
+  const templates = apiTemplates.length > 0 ? apiTemplates : JOB_CATALOG;
 
   if (templates.length === 0) {
     /* 空状态给具体原因，不写「暂无数据」。老板需要知道是"没有岗位"
@@ -57,10 +66,12 @@ export function JobLibraryView() {
         </p>
       </header>
 
-      {/* Phase 2 单岗位：单列即可，不套 2+1+2 分数网格（那是多岗位时的布局） */}
-      <div className="flex flex-col gap-[var(--space-4)]">
+      {/* 2+1+2 分数网格：首卡跨 2 列（视觉最重），其余 1fr 1fr */}
+      <div className="grid grid-cols-1 gap-[var(--space-4)] md:grid-cols-2">
         {templates.map((template, index) => (
-          <JobCard key={template.id ?? `job-${index}`} template={template} />
+          <div key={template.id ?? `job-${index}`} className={index === 0 ? 'md:col-span-2' : undefined}>
+            <JobCard template={template} />
+          </div>
         ))}
       </div>
     </div>

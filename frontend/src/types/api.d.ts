@@ -3402,13 +3402,19 @@ export interface components {
             goal_id?: string;
             /** Format: uuid */
             agent_id?: string;
-            /** @description 业务语言，如「我没敢填客户等级」 */
+            /** @description 关联任务名（业务语言），供 /pending 页直接渲染，避免前端逐条拉 goal 详情 */
+            goal_title?: string;
+            /** @description 停在哪一步（业务语言步骤标题，如「读取竞品页面 7/10」） */
+            stopped_step?: string;
+            /** @description 业务语言（= needs_human_input 的 user_message），如「我没敢填客户等级」 */
             reason?: string;
             /** @description 依据行，供老板判断 */
             evidence?: {
                 [key: string]: unknown;
             }[];
             options?: string[];
+            /** @description 已等待天数，升级信号。前端按此降序排序（等最久在前），禁止折叠隐藏 */
+            waiting_days?: number;
             /** Format: date-time */
             created_at?: string;
         };
@@ -3616,7 +3622,7 @@ export interface components {
             /** @description 供前端选择是否用 success 色' */
             all_resolved?: boolean;
         };
-        /** @description 员工维度成本构成，**业务口径，无 token**。 */
+        /** @description 员工维度成本构成，业务口径，无 token。 下钻终点：到此为止，不再向 token 级下钻（UIUX §8.1 终裁为「两层到底」）。 */
         CostBreakdown: {
             items?: {
                 /** Format: uuid */
@@ -3624,8 +3630,29 @@ export interface components {
                 agent_name?: string;
                 task_count?: number;
                 cost_cents?: number;
+                /** @description 占比。用水平条呈现，禁饼图。 */
+                cost_share_pct?: number;
+                /** @description 环比百分比。可空（首月无环比数据）。 */
+                trend_pct?: number | null;
+                /**
+                 * @description 涨跌方向。禁止只用颜色表示涨跌，必须同时呈现箭头符号与数值 （同「状态三通道」约束：颜色 + 图标 + 文字）。
+                 * @enum {string}
+                 */
+                trend_direction?: "up" | "down" | "flat";
+                /** @description 折算人力（小时）。仅当 baseline_configured 为 true 时有值。 */
+                saved_hours?: number | null;
             }[];
             total_cost_cents?: number;
+            /** @description 租户是否已配置人工基线。为 false 时前端不得显示 0 （0 会被老板读成「一点时间都没省」），必须显示配置引导。 */
+            baseline_configured?: boolean;
+            /** @description 人工基线分钟数（租户可配参数）。折算人力 = (基线分钟数 × 运行次数) / 60。 */
+            baseline_minutes_per_run?: number | null;
+            /** @description 零成本员工必须列出，前端标 Pause + 「今天没有运行」。 禁止折叠计数（如「+2 名待命」）—— 折叠即等于隐藏， 老板无法区分「没活干」和「被跳过了」。 */
+            zero_cost_agents?: {
+                /** Format: uuid */
+                agent_id?: string;
+                agent_name?: string;
+            }[];
         };
         /**
          * @description **owner 口径业务视图。**

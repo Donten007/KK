@@ -18,11 +18,13 @@ import { Topbar } from './topbar';
 import type { components } from '@/types/api';
 
 type Tenant = components['schemas']['Tenant'];
+type PendingItem = components['schemas']['PendingItem'];
 
 export function WorkspaceShellClient() {
   const router = useRouter();
   const [user, setUser] = useState<components['schemas']['User'] | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     if (!getSession()) {
@@ -33,10 +35,12 @@ export function WorkspaceShellClient() {
     let cancelled = false;
 
     void (async () => {
-      const [me, tenantResult] = await Promise.all([
+      const [me, tenantResult, pendingResult] = await Promise.all([
         fetchCurrentUser(),
         // 账套缺失不阻断页面 —— 顶栏只是少显示一个号，不该把人拦在门外
         apiRequest<Tenant>('/api/v1/tenants/current').catch(() => null),
+        // 待确认角标：真实接口数据，禁假数据。端点未就绪/失败时按 0 处理（不显示角标）
+        apiRequest<PendingItem[]>('/api/v1/pending').catch(() => []),
       ]);
 
       if (cancelled) return;
@@ -46,6 +50,7 @@ export function WorkspaceShellClient() {
       }
       setUser(me);
       setTenant(tenantResult);
+      setPendingCount(pendingResult.length);
     })();
 
     return () => {
@@ -53,5 +58,7 @@ export function WorkspaceShellClient() {
     };
   }, [router]);
 
-  return <Topbar tenantCode={tenant?.code} tenantName={tenant?.name} user={user ?? undefined} />;
+  return (
+    <Topbar tenantCode={tenant?.code} tenantName={tenant?.name} user={user ?? undefined} pendingCount={pendingCount} />
+  );
 }
