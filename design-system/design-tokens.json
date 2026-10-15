@@ -1,9 +1,11 @@
 {
-  "$schema-note": "EvoWork design tokens. Machine-readable mirror of docs/UIUX.md section 3-7. Import in frontend. All color values verified against WCAG 2.1 on FOUR surfaces (bg / surface-1 / surface-2 / surface-3). Failures: 0.",
+  "$schema-note": "EvoWork design tokens. Machine-readable mirror of docs/UIUX.md section 3-7. Import in frontend. All color values verified against WCAG 2.1 on FOUR surfaces (bg / surface-1 / surface-2 / surface-3). Failures: 0. v1.1.0 adds the MARKETING token group (docs/UIUX-marketing.md) for /login and /register only -- additive, existing 60 tokens untouched.",
   "meta": {
     "name": "EvoWork Design Tokens",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "generated": "2026-10-15",
+    "marketingAdded": "2026-10-15",
+    "marketingScope": "docs/UIUX-marketing.md. Marketing tokens apply ONLY to /login and /register (Brand register). Workspace pages keep v1.0.0 tokens (Product register). Never mix the two groups on one screen.",
     "author": "designer",
     "sourceDoc": "docs/UIUX.md",
     "evidenceDoc": "docs/DESIGN-EVIDENCE.md",
@@ -94,6 +96,31 @@
       "focus-ring": { "value": "#0C6F86", "type": "color", "contrast": { "onBg": "5.78:1" } }
     },
 
+    "marketing": {
+      "note": "Deep-blue glow marketing surfaces for auth pages. Always-dark regardless of data-theme. Glow hue stays in the blue-cyan family (205-215 deg), 40+ deg away from purple (270) -- P0-2 safe by construction. All text contrast computed on mkt-bg-elev (#0A1422), the darkest surface any text sits on.",
+      "scope": "/login and /register ONLY. Forbidden inside (workspace) routes.",
+      "bg":         { "value": "#060B14", "type": "color", "role": "marketing page base, deep blue-black" },
+      "bg-elev":    { "value": "#0A1422", "type": "color", "role": "upper hero zone / glass fallback surface" },
+      "glow-primary":   { "value": "#2E86DE", "type": "color", "hue": 210, "role": "main halo core, top-right. Alpha applied in CSS (0.30), never as fill" },
+      "glow-secondary": { "value": "#14456E", "type": "color", "hue": 209, "role": "secondary halo, bottom-left. Alpha 0.20 in CSS" },
+      "glow-accent":    { "value": "#29B6D6", "type": "color", "hue": 191, "role": "brand tie-in micro-glow behind auth card. Alpha 0.10 in CSS. Effect layer, does NOT count against accentQuota" },
+      "fg-1":     { "value": "#EAF2F8", "type": "color", "contrast": { "onBgElev": "13.8:1 AAA" }, "role": "display headline" },
+      "fg-2":     { "value": "#A8BACC", "type": "color", "contrast": { "onBgElev": "9.3:1 AAA" }, "role": "lead subtitle" },
+      "fg-muted": { "value": "#7C8DA0", "type": "color", "contrast": { "onBgElev": "5.4:1 AA" }, "role": "meta, footer, helper text" },
+      "glass-bg":     { "value": "rgba(255,255,255,0.05)", "type": "color", "role": "auth card fill, layered over bg-elev" },
+      "glass-border": { "value": "rgba(255,255,255,0.10)", "type": "color", "role": "auth card + nav hairline" },
+      "glass-highlight": { "value": "rgba(255,255,255,0.14)", "type": "color", "role": "inset top edge of glass card, 1px physical-edge light" },
+      "nav-fg":   { "value": "#D5E0EA", "type": "color", "contrast": { "onBgElev": "11.2:1 AAA" }, "role": "nav links" },
+      "cta-bg":        { "value": "#FFFFFF", "type": "color", "role": "pill CTA fill (reference: white capsule)" },
+      "cta-fg":        { "value": "#0B1214", "type": "color", "contrast": { "onCta": "18.9:1 AAA" }, "role": "text on white pill" },
+      "cta-bg-hover":  { "value": "#EBF2F6", "type": "color", "role": "hover, slight cool tint not gray" },
+      "cta-bg-active": { "value": "#DDE8EE", "type": "color", "role": "active" },
+      "input-bg":     { "value": "rgba(255,255,255,0.04)", "type": "color", "role": "field fill inside glass card" },
+      "input-border": { "value": "rgba(255,255,255,0.16)", "type": "color", "role": "field outline, >=3:1 against glass-bg composite" },
+      "focus-ring":   { "value": "#4CC9E0", "type": "color", "role": "same as dark focus-ring, reused for consistency" },
+      "danger":       { "value": "#F25C60", "type": "color", "contrast": { "onBgElev": "4.9:1 AA" }, "role": "field error, reused from dark theme" }
+    },
+
     "hueSeparation": {
       "note": "Adjacent hue gaps must be >= 30 deg. CVD safety is provided by the three-channel rule, not by hue alone.",
       "values": { "success": 150, "warn": 36, "danger": 358, "info": 232, "accent": 191 },
@@ -145,6 +172,14 @@
       "body":  { "value": "0" }
     },
     "leading": { "body": 1.55, "tight": 1.25 },
+    "marketingScale": {
+      "note": "Brand-register display ladder for auth pages ONLY. Weight stays 590 (the 700+ ban is global). Negative tracking deepens with size per the tracking discipline.",
+      "display-xl": { "size": "64px", "lineHeight": "72px", "letterSpacing": "-0.02em", "weight": 590, "usage": "hero headline, >=1280px" },
+      "display-lg": { "size": "48px", "lineHeight": "56px", "letterSpacing": "-0.015em", "weight": 590, "usage": "hero headline, 768-1279px" },
+      "display-md": { "size": "36px", "lineHeight": "44px", "letterSpacing": "-0.01em",  "weight": 590, "usage": "hero headline, <768px" },
+      "lead":   { "size": "18px", "lineHeight": "30px", "letterSpacing": "0", "weight": 400, "usage": "hero subtitle, 1-2 lines" },
+      "meta":   { "size": "14px", "lineHeight": "22px", "letterSpacing": "0.01em", "weight": 400, "usage": "helper, footer" }
+    },
     "measure": { "prose": "65ch", "note": "~720px, session and report content" },
     "numericAlignment": {
       "note": "Layered rule. Conclusion uses body font, measurement uses mono. They look contradictory but are not.",
@@ -194,7 +229,18 @@
     "control": { "height": "32px", "small": "28px" },
     "toolbar": { "height": "36px" },
     "tapTarget": { "min": "44px", "standard": "WCAG 2.5.5", "note": "inline icon buttons expand hit area with padding or pseudo-element" },
-    "zIndex": { "base": 0, "dropdown": 1000, "sticky": 1100, "modal": 1200, "toast": 1300 }
+    "zIndex": { "base": 0, "dropdown": 1000, "sticky": 1100, "modal": 1200, "toast": 1300 },
+    "marketing": {
+      "note": "Auth page layout constants. Brand register: generous whitespace, centered composition (Deliberate exception to DESIGN_VARIANCE>=4 no-centered-hero rule -- the auth page IS the hero, DeepSeek reference pattern).",
+      "nav-h": "64px",
+      "container": "1120px",
+      "auth-card-w": "420px",
+      "auth-card-padding": "32px",
+      "hero-top-gap": "96px",
+      "headline-to-card-gap": "48px",
+      "glass-blur": "20px",
+      "glow-blob-blur": "120px"
+    }
   },
 
   "icon": {

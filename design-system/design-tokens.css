@@ -2,8 +2,10 @@
    EvoWork Design Tokens - CSS Custom Properties
    --------------------------------------------------------------------------
    Source of truth : docs/UIUX.md (1577 lines, 13 chapters)
+                     docs/UIUX-marketing.md (marketing, Section 13 below)
    Evidence        : docs/DESIGN-EVIDENCE.md (228 lines, measured data)
    Generated        : 2026-10-15 by designer
+   Version          : 1.1.0 (adds MARKETING section, additive)
    Package         : lucide-react@1.57.0 (icons, verified against real exports)
    --------------------------------------------------------------------------
    DEFAULT THEME IS DARK. Dark is not a "dark mode" -- it is the native medium.
@@ -445,3 +447,186 @@
   outline-color: var(--focus-ring);
   box-shadow: 0 0 0 var(--focus-ring-off) var(--bg);
 }
+
+
+/* ==========================================================================
+   SECTION 13 - MARKETING (v1.1.0, additive)
+   --------------------------------------------------------------------------
+   Scope: /login and /register ONLY. Forbidden inside (workspace) routes.
+   Spec   : docs/UIUX-marketing.md
+   Register: Brand (DeepSeek-style deep-blue glow). Workspace stays Product.
+   Always dark: marketing pages force their own surface tokens regardless
+   of [data-theme], because the glow composition only works on deep blue.
+   ========================================================================== */
+
+:root {
+  /* --- Primitives: raw values live HERE only (same rule as Section 1) --- */
+  --p-mkt-bg-0:      #060B14;   /* page base, deep blue-black */
+  --p-mkt-bg-1:      #0A1422;   /* upper hero zone / glass fallback */
+  --p-mkt-glow-1:    #2E86DE;   /* main halo core, hue 210 */
+  --p-mkt-glow-2:    #14456E;   /* secondary halo, hue 209 */
+  --p-mkt-ink-1:     #EAF2F8;   /* headline */
+  --p-mkt-ink-2:     #A8BACC;   /* lead subtitle */
+  --p-mkt-ink-3:     #7C8DA0;   /* meta / footer / helper */
+  --p-mkt-nav-ink:   #D5E0EA;   /* nav links */
+  --p-mkt-cta-bg:    #FFFFFF;   /* pill CTA fill */
+  --p-mkt-cta-fg:    #0B1214;   /* text on white pill */
+  --p-mkt-cta-hov:   #EBF2F6;
+  --p-mkt-cta-act:   #DDE8EE;
+  --p-mkt-focus:     #4CC9E0;   /* same as dark --focus-ring */
+  --p-mkt-danger:    #F25C60;   /* same as dark --danger */
+}
+
+/* Marketing surfaces are namespaced --mkt-* and scoped to the auth layout
+   root element: <div data-marketing="true"> or the (auth) route layout.
+   They never override workspace --bg/--surface-*, so the two registers
+   cannot leak into each other. */
+[data-marketing="true"] {
+  color-scheme: dark;
+
+  /* --- Surfaces --- */
+  --mkt-bg:           var(--p-mkt-bg-0);
+  --mkt-bg-elev:      var(--p-mkt-bg-1);
+  --mkt-glow-primary: var(--p-mkt-glow-1);
+  --mkt-glow-secondary: var(--p-mkt-glow-2);
+
+  /* --- Foreground (contrast computed on --mkt-bg-elev, the darkest
+         surface any text sits on) --- */
+  --mkt-fg-1:     var(--p-mkt-ink-1);   /* 13.8:1 AAA headline */
+  --mkt-fg-2:     var(--p-mkt-ink-2);   /*  9.3:1 AAA lead */
+  --mkt-fg-muted: var(--p-mkt-ink-3);   /*  5.4:1 AA  meta */
+  --mkt-nav-fg:   var(--p-mkt-nav-ink); /* 11.2:1 AAA nav */
+
+  /* --- Glass (effect layer, NOT a semantic -bg; the noAlphaForSemantics
+         rule governs semantic colors and is untouched) --- */
+  --mkt-glass-bg:        rgba(255, 255, 255, 0.05);
+  --mkt-glass-border:    rgba(255, 255, 255, 0.10);
+  --mkt-glass-highlight: rgba(255, 255, 255, 0.14); /* 1px inset top edge */
+  --mkt-glass-blur:      20px;
+
+  /* --- CTA pill --- */
+  --mkt-cta-bg:        var(--p-mkt-cta-bg);
+  --mkt-cta-fg:        var(--p-mkt-cta-fg);   /* 18.9:1 on white */
+  --mkt-cta-bg-hover:  var(--p-mkt-cta-hov);
+  --mkt-cta-bg-active: var(--p-mkt-cta-act);
+
+  /* --- Form fields inside glass card --- */
+  --mkt-input-bg:     rgba(255, 255, 255, 0.04);
+  --mkt-input-border: rgba(255, 255, 255, 0.16);  /* >=3:1 on composite */
+
+  /* --- States (reuse dark-theme values for continuity) --- */
+  --mkt-focus-ring: var(--p-mkt-focus);
+  --mkt-danger:     var(--p-mkt-danger);         /* 4.9:1 AA on bg-elev */
+
+  /* --- Display type ladder (weight stays 590, no 700+) --- */
+  --mkt-text-display-xl: 64px;  --mkt-lh-display-xl: 72px; --mkt-ls-display-xl: -0.02em;
+  --mkt-text-display-lg: 48px;  --mkt-lh-display-lg: 56px; --mkt-ls-display-lg: -0.015em;
+  --mkt-text-display-md: 36px;  --mkt-lh-display-md: 44px; --mkt-ls-display-md: -0.01em;
+  --mkt-text-lead:       18px;  --mkt-lh-lead: 30px;
+  --mkt-text-meta:       14px;  --mkt-lh-meta: 22px;
+
+  /* --- Layout --- */
+  --mkt-nav-h:            64px;
+  --mkt-container:        1120px;
+  --mkt-card-w:           420px;
+  --mkt-card-padding:     32px;
+  --mkt-hero-top-gap:     96px;
+  --mkt-headline-card-gap: 48px;
+  --mkt-glow-blur:        120px;
+
+  /* --- Motion: reuses Section 6 durations/easings. No new easing.
+         allowed: 200ms fade of the auth card on mount (one element, one
+         property, opacity only). NO entrance stagger, NO scroll fade-in,
+         NO decorative hover scale -- Product-register motion bans carry
+         over to Brand pages except where explicitly listed here. --- */
+}
+
+/* Page canvas: multi-layer glow. Layers bottom-to-top:
+   1. base vertical gradient   deep-blue elevation (top brighter)
+   2. top-right main halo      glow-1 @ 0.30
+   3. bottom-left soft halo    glow-2 @ 0.20
+   4. brand micro-glow behind card position  glow-accent @ 0.10 (CSS-only,
+      defined in UIUX-marketing.md; use a separate absolutely-positioned
+      div so the canvas stays composable) */
+[data-marketing="true"] .mkt-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 900px 600px at 75% 10%,
+      color-mix(in srgb, var(--mkt-glow-primary) 30%, transparent), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 10% 90%,
+      color-mix(in srgb, var(--mkt-glow-secondary) 20%, transparent), transparent 55%),
+    linear-gradient(180deg, var(--mkt-bg-elev) 0%, var(--mkt-bg) 62%);
+}
+
+/* Optional soft-blur blob variant (heavier diffusion, use for the
+   brand micro-glow behind the auth card): */
+[data-marketing="true"] .mkt-glow-blob {
+  position: absolute;
+  border-radius: var(--radius-pill);
+  background: var(--mkt-glow-primary);
+  filter: blur(var(--mkt-glow-blur));
+  opacity: 0.10;
+  pointer-events: none;
+}
+
+/* Glass card: auth form container + sticky nav */
+[data-marketing="true"] .mkt-glass {
+  background: linear-gradient(180deg, var(--mkt-glass-bg), rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--mkt-glass-border);
+  border-radius: var(--radius-lg);          /* 12px, card radius cap holds */
+  box-shadow: inset 0 1px 0 var(--mkt-glass-highlight);
+  -webkit-backdrop-filter: blur(var(--mkt-glass-blur)) saturate(140%);
+  backdrop-filter: blur(var(--mkt-glass-blur)) saturate(140%);
+}
+
+/* Fallback: no backdrop-filter support -> solid surface, same hierarchy */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  [data-marketing="true"] .mkt-glass {
+    background: var(--mkt-bg-elev);
+  }
+}
+
+/* CTA pill: the reference white capsule. radius-pill is legal here --
+   Section 5 restricts pill to "avatars and status chips ONLY" in the
+   Product register; the auth CTA is the ONE sanctioned Brand-register
+   exception, see UIUX-marketing.md 4.3. */
+[data-marketing="true"] .mkt-cta {
+  height: 48px;
+  padding: 0 24px;
+  border-radius: var(--radius-pill);
+  background: var(--mkt-cta-bg);
+  color: var(--mkt-cta-fg);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.01em;
+  transition: background var(--motion-fast) var(--ease-standard);
+}
+[data-marketing="true"] .mkt-cta:hover  { background: var(--mkt-cta-bg-hover); }
+[data-marketing="true"] .mkt-cta:active { background: var(--mkt-cta-bg-active); transform: scale(var(--press-scale)); }
+
+/* Fields inside the glass card re-use workspace input structure but with
+   marketing fills. Labels stay ABOVE the field (13px, --mkt-fg-2).
+   Never placeholder-as-label. Error: --mkt-danger border + 12px error
+   text directly below the field, same as workspace rule. */
+[data-marketing="true"] .mkt-input {
+  background: var(--mkt-input-bg);
+  border: 1px solid var(--mkt-input-border);
+  border-radius: var(--radius-sm);
+  color: var(--mkt-fg-1);
+  height: 44px;                 /* tap target */
+  transition: border-color var(--motion-fast) var(--ease-standard);
+}
+[data-marketing="true"] .mkt-input::placeholder { color: var(--mkt-fg-muted); }
+[data-marketing="true"] .mkt-input:focus-visible {
+  outline: var(--focus-ring-w) solid var(--mkt-focus-ring);
+  outline-offset: var(--focus-ring-off);
+}
+[data-marketing="true"] .mkt-input[aria-invalid="true"] {
+  border-color: var(--mkt-danger);
+}
+
+/* Reduced motion: Section 11 global rule already covers marketing pages
+   (durations -> 0.01ms). The glow canvas is static by design; never
+   animate background-position, filter or opacity of the halo layers. */
