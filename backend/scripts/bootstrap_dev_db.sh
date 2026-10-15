@@ -42,6 +42,12 @@ JWT_SECRET="${JWT_SECRET:-test-secret-test-secret-test-secret-32}" \
 CREDENTIAL_KEK="${CREDENTIAL_KEK:-dGVzdC10ZXN0LXRlc3QtdGVzdC10ZXN0LXRlc3QtdGVzdDEyMzQ1Njc4OTA=}" \
 python -m alembic upgrade head
 
+echo "[3b/4] LangGraph checkpoint 表（官方 setup()，幂等；CI 全新库曾因缺此步报 relation checkpoints 不存在）"
+DATABASE_URL="${DATABASE_URL:-postgresql+asyncpg://opc_app:opc_app_dev@${PGHOST:-127.0.0.1}:${PGPORT:-5432}/${DB_NAME}}" \
+JWT_SECRET="${JWT_SECRET:-test-secret-test-secret-test-secret-32}" \
+CREDENTIAL_KEK="${CREDENTIAL_KEK:-dGVzdC10ZXN0LXRlc3QtdGVzdC10ZXN0LXRlc3QtdGVzdDEyMzQ1Njc4OTA=}" \
+python -m app.agents.checkpointer_bootstrap
+
 echo "[4/4] 授权（应用角色只 DML，审计表 append-only）"
 "${PSQL[@]}" -d "${DB_NAME}" <<'SQL'
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO opc_app;
