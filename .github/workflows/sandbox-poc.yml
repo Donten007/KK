@@ -39,7 +39,9 @@ jobs:
             sudo tar --zstd -xf gvisor.tar.zstd -C /usr/local/bin
             rm -f gvisor.tar.zstd gvisor.tar.zstd.sha512
           fi
-          sudo /usr/local/bin/runsc install || sudo runsc install
+          # cgroup v2+systemd 必须显式声明 --systemd-cgroup，否则 docker --memory/--pids-limit 不会被
+          # gVisor 读取（限额静默失效，gvisor #10264 —— P9/N9/N10 反向断言曾因此全挂）
+          sudo /usr/local/bin/runsc install -- --systemd-cgroup || sudo runsc install -- --systemd-cgroup
           sudo systemctl restart docker
 
       - name: 验证 runsc 生效
@@ -89,8 +91,8 @@ jobs:
             fi
           }
           run_n "N1 纯Node基线"        "node /poc/n1_baseline.js"
-          run_n "N2 npm 工具链+写盘"   "bash -lc 'apt-get update -qq && apt-get install -y -qq build-essential >/dev/null 2>&1; cd /tmp && npm install --no-save bcryptjs@3.0.2 >/dev/null 2>&1 && node /poc/n2_gyp.js'"
-          run_n "N3 预编译.node加载"   "cd /tmp && npm install --no-save better-sqlite3@11.10.0 >/dev/null 2>&1 && node -e 'module.paths.push(\"/tmp/node_modules\"); require(\"/poc/n3_sqlite.js\")'"
+          run_n "N2 npm 工具链+写盘"   "bash -lc 'apt-get update -qq && apt-get install -y -qq build-essential >/dev/null 2>&1; cd /tmp && npm install --no-save bcryptjs@3.0.2 >/dev/null 2>&1 && NODE_PATH=/tmp/node_modules node /poc/n2_gyp.js'"
+          run_n "N3 预编译.node加载"   "cd /tmp && npm install --no-save better-sqlite3@11.10.0 >/dev/null 2>&1 && NODE_PATH=/tmp/node_modules node /poc/n3_sqlite.js"
           run_n "N4 optionalDeps回退"  "cd /tmp && npm install --no-save esbuild@0.25.5 >/dev/null 2>&1 && npx esbuild --version"
           run_n "N5 child_process"     "node /poc/n5_spawn.js"
           run_n "N6 net出网"           "node /poc/n6_net.js"
