@@ -72,6 +72,10 @@ ignore = [
 # ---- mypy：严格模式（幻觉签名的第一道门）----
 [tool.mypy]
 python_version = "3.13"
+# 统一按 win32 平台语义检查：runtime.py 有 Windows 专属事件循环分支，
+# Linux CI 下不设此项会把 win32 分支判为 unreachable（本机 Windows 则不会）——
+# 平台语义必须与本机一致，否则 CI 和本地各判各的。
+platform = "win32"
 strict = true
 warn_unreachable = true
 disallow_untyped_defs = true
