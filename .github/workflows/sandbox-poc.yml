@@ -82,7 +82,7 @@ jobs:
               -v "$GITHUB_WORKSPACE/backend/scripts/sandbox_poc:/poc:ro" \
               -w /poc \
               --memory 2g --pids-limit 128 --ulimit nofile=1024:1024 \
-              node:22-slim-bookworm bash -lc "$*" ; then
+              node:22-bookworm-slim bash -lc "$*" ; then
               echo "PASS: $name"
             else
               echo "FAIL: $name"; FAIL=$((FAIL+1))
