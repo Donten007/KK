@@ -1,0 +1,393 @@
+{
+  "$schema-note": "EvoWork design tokens. Machine-readable mirror of docs/UIUX.md section 3-7. Import in frontend. All color values verified against WCAG 2.1 on FOUR surfaces (bg / surface-1 / surface-2 / surface-3). Failures: 0.",
+  "meta": {
+    "name": "EvoWork Design Tokens",
+    "version": "1.0.0",
+    "generated": "2026-10-15",
+    "author": "designer",
+    "sourceDoc": "docs/UIUX.md",
+    "evidenceDoc": "docs/DESIGN-EVIDENCE.md",
+    "defaultTheme": "dark",
+    "supportedThemes": ["dark", "light"],
+    "iconLibrary": {
+      "name": "lucide-react",
+      "version": "1.57.0",
+      "license": "ISC",
+      "verifiedMethod": "npm pack + extract + compare declare const exports",
+      "totalExports": 3782,
+      "strokeWidth": 1.5
+    },
+    "wcagVerification": {
+      "formula": "WCAG 2.1 relative luminance, sRGB linearization",
+      "surfacesTested": 4,
+      "textFailures": 0,
+      "note": "Every text token was measured on all 4 surfaces. Two values were corrected during this verification: light --muted (was #616E73, 4.42:1 on surface-3) and dark --danger (was #F0555A, 4.4987:1 on surface-3, now #F25C60 at 4.73:1)."
+    }
+  },
+
+  "color": {
+    "dark": {
+      "bg":            { "value": "#0B0D0E", "type": "color", "contrast": { "onBg": null, "onSurface1": null, "onSurface2": null, "onSurface3": null }, "role": "app canvas, not pure black" },
+      "surface-1":     { "value": "#111618", "type": "color", "role": "sidebar, panel" },
+      "surface-2":     { "value": "#171D20", "type": "color", "role": "card, input" },
+      "surface-3":     { "value": "#1F2629", "type": "color", "role": "popover, overlay" },
+      "surface-hover": { "value": "#1A2124", "type": "color", "role": "hover state on surface-1, 1.12:1 vs s1" },
+
+      "fg-1": { "value": "#E8EAEA", "type": "color", "contrast": { "onBg": "16.13:1 AAA", "onSurface1": "15.10:1 AAA", "onSurface2": "14.10:1 AAA", "onSurface3": "12.72:1 AAA" }, "role": "primary text" },
+      "fg-2": { "value": "#B4BCC0", "type": "color", "contrast": { "onBg": "10.11:1 AAA", "onSurface1": "9.46:1 AAA", "onSurface2": "8.84:1 AAA", "onSurface3": "7.97:1 AAA" }, "role": "secondary text" },
+      "muted":{ "value": "#949CA1", "type": "color", "contrast": { "onBg": "6.98:1 AA", "onSurface1": "6.54:1 AA", "onSurface2": "6.11:1 AA", "onSurface3": "5.51:1 AA" }, "role": "tertiary text, metadata" },
+
+      "accent":       { "value": "#29B6D6", "type": "color", "hue": 191, "contrast": { "onBg": "8.12:1 AAA", "onSurface1": "7.60:1 AAA", "onSurface2": "7.10:1 AAA", "onSurface3": "6.40:1 AA" } },
+      "accent-hover": { "value": "#4CC9E0", "type": "color", "contrast": { "onBg": "9.96:1 AAA", "onSurface3": "7.85:1 AAA" } },
+      "accent-press": { "value": "#1595C2", "type": "color" },
+      "accent-on":    { "value": "#04222B", "type": "color", "contrast": { "onAccentFill": "6.90:1 AA" }, "role": "text on accent fill, tinted not pure black" },
+      "accent-bg":    { "value": "#0E2A2E", "type": "color", "contrast": { "accentOnBg": "6.30:1 AA" } },
+
+      "success":    { "value": "#3FBF7F", "type": "color", "hue": 150, "contrast": { "onBg": "8.32:1 AAA", "onSurface3": "6.56:1 AA", "onSuccessBg": "6.81:1 AA" } },
+      "warn":       { "value": "#E39A2E", "type": "color", "hue": 36,  "contrast": { "onBg": "8.28:1 AAA", "onSurface3": "6.53:1 AA", "onWarnBg": "6.73:1 AA" } },
+      "danger":     { "value": "#F25C60", "type": "color", "hue": 358, "contrast": { "onBg": "5.79:1 AA", "onSurface3": "4.73:1 AA", "onDangerBg": "5.06:1 AA" }, "note": "raised from #F0555A which was 4.4987:1 on surface-3" },
+      "info":       { "value": "#7C8CF8", "type": "color", "hue": 232, "contrast": { "onBg": "6.46:1 AA", "onSurface3": "5.09:1 AA", "onInfoBg": "5.52:1 AA" } },
+
+      "success-bg": { "value": "#12261A", "type": "color" },
+      "warn-bg":    { "value": "#2A2114", "type": "color" },
+      "danger-bg":  { "value": "#2C1519", "type": "color" },
+      "info-bg":    { "value": "#181D33", "type": "color" },
+
+      "border":        { "value": "#232A2D", "type": "color", "role": "decorative hairline divider", "note": "1.34:1 vs bg is BY DESIGN. WCAG 1.4.11 only governs control boundaries, not dividers" },
+      "border-strong": { "value": "#2C3539", "type": "color", "role": "card outline, group boundary" },
+      "border-input":  { "value": "#5E6C71", "type": "color", "contrast": { "onBg": "3.58:1", "onSurface1": "3.35:1" }, "role": "input outline, MUST be >= 3:1" },
+
+      "focus-ring": { "value": "#4CC9E0", "type": "color", "contrast": { "onBg": "9.96:1" }, "note": "accent-on-accent is 1.23:1 and FAILS. Always use outline-offset so page bg shows through" }
+    },
+
+    "light": {
+      "bg":            { "value": "#FFFFFF", "type": "color", "role": "app canvas" },
+      "surface-1":     { "value": "#F7F9F9", "type": "color", "role": "sidebar, panel" },
+      "surface-2":     { "value": "#EFF3F3", "type": "color", "role": "card, input" },
+      "surface-3":     { "value": "#E7ECEC", "type": "color", "role": "popover, overlay" },
+      "surface-hover": { "value": "#E9EEEE", "type": "color", "role": "hover on surface-1, 1.11:1 vs s1" },
+
+      "fg-1": { "value": "#0B1214", "type": "color", "contrast": { "onBg": "18.90:1 AAA", "onSurface1": "17.89:1 AAA", "onSurface2": "16.91:1 AAA", "onSurface3": "15.85:1 AAA" } },
+      "fg-2": { "value": "#4B585D", "type": "color", "contrast": { "onBg": "7.36:1 AAA", "onSurface3": "6.17:1 AA" } },
+      "muted":{ "value": "#5C696E", "type": "color", "contrast": { "onBg": "5.67:1 AA", "onSurface1": "5.37:1 AA", "onSurface2": "5.08:1 AA", "onSurface3": "4.76:1 AA" }, "note": "corrected from #616E73 which was 4.42:1 on surface-3 (below AA)" },
+
+      "accent":       { "value": "#0C6F86", "type": "color", "contrast": { "onBg": "5.78:1 AA", "onSurface3": "4.85:1 AA" } },
+      "accent-hover": { "value": "#095E71", "type": "color", "contrast": { "onBg": "7.37:1 AAA", "onSurface3": "6.18:1 AA" } },
+      "accent-press": { "value": "#084A44", "type": "color" },
+      "accent-on":    { "value": "#FFFFFF", "type": "color", "contrast": { "onAccentFill": "5.78:1 AA" } },
+      "accent-bg":    { "value": "#E6F1F4", "type": "color", "contrast": { "accentOnBg": "5.02:1 AA" } },
+
+      "success":    { "value": "#1B7343", "type": "color", "contrast": { "onBg": "5.87:1 AA", "onSurface3": "4.92:1 AA", "onSuccessBg": "5.15:1 AA" } },
+      "warn":       { "value": "#A64908", "type": "color", "contrast": { "onBg": "5.87:1 AA", "onSurface3": "4.92:1 AA", "onWarnBg": "5.26:1 AA" } },
+      "danger":     { "value": "#C42B2B", "type": "color", "contrast": { "onBg": "5.63:1 AA", "onSurface3": "4.72:1 AA", "onDangerBg": "4.88:1 AA" } },
+      "info":       { "value": "#4A5BC7", "type": "color", "contrast": { "onBg": "5.81:1 AA", "onSurface3": "4.87:1 AA", "onInfoBg": "5.07:1 AA" } },
+
+      "success-bg": { "value": "#E7F3EC", "type": "color" },
+      "warn-bg":    { "value": "#FBF1E4", "type": "color" },
+      "danger-bg":  { "value": "#FBEBEB", "type": "color" },
+      "info-bg":    { "value": "#EDEFFA", "type": "color" },
+
+      "border":        { "value": "#E2E6E8", "type": "color", "role": "decorative hairline, 1.26:1 BY DESIGN" },
+      "border-strong": { "value": "#CBD3D6", "type": "color" },
+      "border-input":  { "value": "#7E8A8F", "type": "color", "contrast": { "onBg": "3.55:1", "onSurface1": "3.36:1" }, "role": "input outline, MUST be >= 3:1" },
+
+      "focus-ring": { "value": "#0C6F86", "type": "color", "contrast": { "onBg": "5.78:1" } }
+    },
+
+    "hueSeparation": {
+      "note": "Adjacent hue gaps must be >= 30 deg. CVD safety is provided by the three-channel rule, not by hue alone.",
+      "values": { "success": 150, "warn": 36, "danger": 358, "info": 232, "accent": 191 },
+      "gaps": { "success-warn": 114, "warn-danger": 38, "danger-info": 126, "info-accent": 41, "accent-success": 41 },
+      "rejected": {
+        "teal": { "value": "#14B8A6", "hue": 173, "gapToSuccess": 23, "reason": "REJECTED. Only 23 deg from success green. Under deuteranopia the two are indistinguishable, and 'did this employee finish' is the core state of this product." }
+      }
+    },
+
+    "cvdFindings": {
+      "note": "Measured via deuteranopia / protanopia / tritanopia / achromatopsia simulation. This is WHY the three-channel rule is mandatory rather than best practice.",
+      "warnVsDangerDeuteranopia": { "simulatedWarn": "#CCD189", "simulatedDanger": "#C8D19C", "ratio": "1.00:1", "verdict": "IDENTICAL" },
+      "allColorsAchromatopsia": { "verdict": "all 5 semantic colors collapse to gray" },
+      "mitigation": "Every state must carry color AND icon AND text. Color-only state indicators are forbidden."
+    },
+
+    "depth": {
+      "note": "Two levels only. There is no L2. Shadows are for true overlays, never for cards.",
+      "flat":   { "dark": "none", "light": "none" },
+      "ring":   { "dark": "0 0 0 1px #232A2D", "light": "0 0 0 1px #E2E6E8" },
+      "raised": { "dark": "0 8px 24px rgba(0,0,0,0.4)", "light": "0 8px 24px rgba(0,0,0,0.12)", "usage": "popover, modal, toast, dragged element ONLY" }
+    }
+  },
+
+  "typography": {
+    "family": {
+      "display": { "value": "Inter, Noto Sans SC, -apple-system, sans-serif", "license": "OFL-1.1" },
+      "body":    { "value": "Inter, Noto Sans SC, -apple-system, sans-serif", "license": "OFL-1.1" },
+      "mono":    { "value": "JetBrains Mono, Noto Sans SC, ui-monospace, monospace", "license": "OFL-1.1", "note": "verified: free for commercial use, no attribution required" }
+    },
+    "weight": {
+      "regular":  { "value": 400, "usage": "body text" },
+      "medium":   { "value": 510, "usage": "table heads, card titles, small emphasis. The signature weight." },
+      "semibold": { "value": 590, "usage": "page titles ONLY" },
+      "forbidden": [700, 800, 900]
+    },
+    "scale": {
+      "xs":   { "size": "11px", "lineHeight": "16px", "letterSpacing": "0.01em", "usage": "metadata, timestamps" },
+      "sm":   { "size": "13px", "lineHeight": "20px", "letterSpacing": "0",    "usage": "table body, helper text. DEFAULT UI SIZE." },
+      "base": { "size": "14px", "lineHeight": "21px", "letterSpacing": "0",    "usage": "body" },
+      "md":   { "size": "16px", "lineHeight": "24px", "letterSpacing": "-0.005em", "usage": "card titles" },
+      "lg":   { "size": "20px", "lineHeight": "28px", "letterSpacing": "-0.01em" },
+      "xl":   { "size": "24px", "lineHeight": "32px", "letterSpacing": "-0.01em", "usage": "page title" },
+      "2xl":  { "size": "32px", "lineHeight": "40px", "letterSpacing": "-0.015em", "usage": "brand area only" }
+    },
+    "tracking": {
+      "caps":  { "value": "0.06em",  "usage": "ALL CAPS labels, table heads. MANDATORY." },
+      "tight": { "value": "-0.02em", "usage": "titles >= 24px" },
+      "body":  { "value": "0" }
+    },
+    "leading": { "body": 1.55, "tight": 1.25 },
+    "measure": { "prose": "65ch", "note": "~720px, session and report content" },
+    "numericAlignment": {
+      "note": "Layered rule. Conclusion uses body font, measurement uses mono. They look contradictory but are not.",
+      "conclusion": { "font": "body", "usage": "cost sentences like 'about 36 per month'. Prevents bill-like feeling." },
+      "measurement": { "font": "mono", "features": "tabular-nums", "align": "right", "usage": "amounts in breakdown lists. Required for vertical comparison." }
+    }
+  },
+
+  "spacing": {
+    "base": 4,
+    "scale": {
+      "1": "4px", "2": "8px", "3": "12px", "4": "16px", "5": "20px",
+      "6": "24px", "8": "32px", "12": "48px", "16": "64px", "20": "80px"
+    },
+    "forbidden": "Any value not a multiple of 4. Specifically 5 / 7 / 13 / 15 / 22 / 30 are banned.",
+    "rhythm": { "withinGroup": "8px", "betweenCards": "12px", "betweenSections": "48px" }
+  },
+
+  "radius": {
+    "none": "0", "sm": "4px", "md": "8px", "lg": "12px", "pill": "9999px",
+    "default": "md",
+    "forbidden": "Card radius >= 24px reads as over-rounded and cheap."
+  },
+
+  "motion": {
+    "duration": { "instant": "80ms", "fast": "150ms", "base": "200ms", "slow": "300ms", "baseUnit": "150ms" },
+    "easing": {
+      "standard": "cubic-bezier(0.2, 0, 0, 1)",
+      "out": "cubic-bezier(0, 0, 0, 1)",
+      "in": "cubic-bezier(0.4, 0, 1, 1)"
+    },
+    "forbiddenEasing": "cubic-bezier(0.68, -0.55, 0.265, 1.55)",
+    "allowedUses": ["state confirm", "causality (panel in/out)", "ongoing progress"],
+    "forbiddenUses": ["page load choreography", "scroll fade-in", "decorative hover scale", "entrance stagger"],
+    "pressScale": 0.98,
+    "progressLoop": "1.2s",
+    "reducedMotion": {
+      "query": "@media (prefers-reduced-motion: reduce)",
+      "behavior": "all durations to 0.01ms, loops become static, running indicators fall back to static solid plus a text label"
+    }
+  },
+
+  "layout": {
+    "sidebar": { "width": "240px", "collapsed": "56px" },
+    "topbar": { "height": "48px" },
+    "row": { "height": "40px", "dense": "36px" },
+    "control": { "height": "32px", "small": "28px" },
+    "toolbar": { "height": "36px" },
+    "tapTarget": { "min": "44px", "standard": "WCAG 2.5.5", "note": "inline icon buttons expand hit area with padding or pseudo-element" },
+    "zIndex": { "base": 0, "dropdown": 1000, "sticky": 1100, "modal": 1200, "toast": 1300 }
+  },
+
+  "icon": {
+    "library": "lucide-react",
+    "version": "1.57.0",
+    "license": "ISC",
+    "strokeWidth": 1.5,
+    "strokeWidthNote": "NOT the 2px library default. 1.5 aligns with our 1px border language.",
+    "sizes": { "inline": "16px", "button": "20px", "standalone": "24px" },
+    "rules": [
+      "stroke=currentColor, fill=none. Icons inherit parent text color.",
+      "No per-icon color tokens except status icons, which must also carry text.",
+      "No emoji as functional icons. Ever.",
+      "Verify every name against real package exports before writing an import."
+    ],
+    "verifiedNames": {
+      "note": "All names below verified importable from lucide-react@1.57.0.",
+      "status": ["LoaderCircle", "CircleDashed", "Pause", "Hand", "CircleCheck", "CircleX", "TriangleAlert", "CircleDollarSign", "LockKeyhole", "BadgeQuestionMark"],
+      "jobTemplates": ["Radar", "FileText", "MessageSquare", "Mail", "FileSpreadsheet", "Bot"],
+      "features": ["LayoutGrid", "Users", "Network", "ListChecks", "Library", "FolderOpen", "Receipt", "CalendarDays", "CalendarClock", "Briefcase", "Settings", "CloudUpload", "Quote", "TrendingUp", "ListFilter", "Square", "RefreshCw"],
+      "navAction": ["Search", "Bell", "Plus", "ArrowRight", "ChevronDown", "Pencil", "Eye", "Download", "Share2", "ExternalLink", "CalendarRange", "ChartNoAxesColumn", "HandCoins", "Coins", "CircleCheckBig", "CircleDot", "TrendingDown", "Minus", "ChevronLeft", "ChevronRight", "CircleAlert"]
+    },
+    "brokenNamesDoNotUse": {
+      "note": "These FAIL at import time. Verified against real package exports. Do not use even though lucide.dev shows them.",
+      "names": {
+        "UploadCloud": "renamed to CloudUpload in 1.0",
+        "ShieldQuestion": "no such export, use ShieldQuestionMark",
+        "CircleHelp": "file exists but has NO PascalCase export, use BadgeQuestionMark",
+        "Filter": "file exists but has NO PascalCase export, use ListFilter",
+        "Building2": "1.0 removed numeric suffix, use Building"
+      }
+    },
+    "singleLibraryException": {
+      "library": "simple-icons (CC0)",
+      "scope": "model logos only, in components/brand/",
+      "conditions": ["brand display scenarios only", "isolated directory", "never adjacent to Lucide UI icons in the same view"],
+      "reason": "Lucide 1.0 removed all brand icons for legal reasons."
+    }
+  },
+
+  "state": {
+    "note": "10 states, each with color AND icon AND text. Do not deviate. Missing icon: raise an issue, do not substitute a similar one.",
+    "map": {
+      "running":    { "color": "accent", "icon": "LoaderCircle",       "text": "运行中",       "animation": "rotate 1.2s infinite" },
+      "stopping":   { "color": "warn",    "icon": "CircleDashed",       "text": "正在中止…",    "animation": "rotate 1.2s infinite", "note": "independent 5th state for cooperative cancel, see UIUX 7.5.1" },
+      "idle":       { "color": "muted",   "icon": "Pause",              "text": "待命" },
+      "needs-human":{ "color": "info",    "icon": "Hand",               "text": "等你确认",     "note": "NOT a warning. Hand means 'stopped to ask', which is correct behavior, not a fault." },
+      "done":       { "color": "success", "icon": "CircleCheck",        "text": "已完成" },
+      "failed":     { "color": "danger",  "icon": "CircleX",            "text": "失败" },
+      "attention":  { "color": "warn",    "icon": "TriangleAlert",      "text": "需关注" },
+      "budget":     { "color": "warn",    "icon": "CircleDollarSign",   "text": "API 预算 NN%", "note": "BYOK: this is the CUSTOMER's API budget, not a platform quota" },
+      "skipped":    { "color": "muted",   "icon": "BadgeQuestionMark",  "text": "已跳过" },
+      "auth-needed":{ "color": "muted",   "icon": "LockKeyhole",        "text": "需授权" }
+    },
+    "circuitBreakRule": {
+      "note": "Circuit break and employee-initiated escalation MUST be visually distinct. Merging them makes the owner think 'my employee is incompetent' when it is actually a config or data problem.",
+      "employeeInitiated": { "icon": "Hand", "group": "escalation queue", "countedInBacklog": true },
+      "circuitBreak":      { "icon": "CircleDashed + CircleAlert", "group": "inline in task row", "countedInBacklog": false, "reason": "it is a system problem, not an employee judgment" },
+      "budgetBlock":       { "icon": "Coins", "group": "escalation queue", "countedInBacklog": true, "needsActionButtons": true }
+    }
+  },
+
+  "copy": {
+    "byokConstraint": {
+      "decisionDate": "2026-10-15",
+      "decision": "Platform payments removed. BYOK only. Subscriptions collected offline.",
+      "forbiddenWords": ["充值", "余额", "平台额度"],
+      "requiredWords": { "budget": "API 预算", "costSubject": "你的模型账单" },
+      "noTopUpLinks": "Budget actions must never link to a top-up flow. The feature does not exist.",
+      "separationRule": "SaaS subscription fee and API cost must never appear side by side in one block. Two different payers. Merging them implies the platform earns model fees, which is exactly the promise this product does not make.",
+      "toneShift": "API budget warnings are a FEATURE not a restriction. Manus' top complaint is unpredictable cost. Use warn, never danger."
+    },
+    "trustMetric": {
+      "p0Rule": "Only state what the system can guarantee. Never state what depends on user behavior.",
+      "systemGuaranteed": "它们没有一次是猜的 (describes system behavior, keep)",
+      "userDependent": "每次你都做了决定 (describes user behavior, MUST be removed when unprocessed items exist)",
+      "cases": {
+        "allProcessed": "本周停下来问过 8 次，每次你都做了决定。它们没有一次是猜的。",
+        "hasUnprocessed": "本周停下来问过 8 次，其中 3 次还在等你。它们没有一次是猜的。",
+        "smallSample": "本周停下来问过 3 次。样本不足，本周不做判断。",
+        "zero": "本周没有员工打断你。"
+      },
+      "smallSampleThreshold": 5,
+      "smallSampleRule": "When N < 5, no red/yellow/green verdict. Show neutral state plus '样本不足，本周不做判断'. Showing a conclusion on insufficient data is a different kind of distrust.",
+      "alsoRequired": "Unprocessed items must show days waiting, not just a count.",
+      "forbiddenColor": "Do not use success green for unprocessed items."
+    },
+    "forbiddenPhrases": [
+      "Welcome to", "Lorem ipsum", "Sign up today", "Get started",
+      "Seamless", "Unleash", "Elevate", "Next-Gen",
+      "一切正常 (when there is simply nothing to report)",
+      "太棒了 (celebratory filler in empty states)"
+    ],
+    "emptyStateRule": "A section with zero results should either not render, or state the specific reason. Never hide silently. Omission is worse than an error, because the owner cannot tell 'no work' from 'skipped'.",
+    "noSystemBehaviorLeak": "Circuit break messages must state business facts only. Never expose detection thresholds or internal mechanisms. Write 'I got stuck at the retrieval step because the shop backend needs authorization', not 'due to no-progress detection threshold adjustment'."
+  },
+
+  "component": {
+    "button": {
+      "primary":   { "bg": "accent", "text": "accent-on", "radius": "md", "paddingY": "6px", "paddingX": "16px", "fontSize": "13px" },
+      "secondary": { "bg": "transparent", "border": "1px solid var(--accent)", "text": "accent", "radius": "md" },
+      "ghost":     { "bg": "transparent", "text": "fg-1", "radius": "md" },
+      "danger":    { "bg": "danger", "text": "#FFFFFF", "radius": "md" },
+      "states": ["default", "hover", "focus-visible", "active", "disabled", "loading"],
+      "active": { "transform": "scale(0.98)" },
+      "disabled": { "opacity": 0.5, "cursor": "not-allowed" }
+    },
+    "card": {
+      "note": "The ONLY legal card shape. No shadow. No left color stripe. No nested cards.",
+      "bg": "surface-2", "border": "1px solid var(--border)", "radius": "md", "padding": "16px", "shadow": "none",
+      "interactive": { "hover": "bg surface-hover, border border-strong" },
+      "selected": { "border": "1px solid var(--accent)" }
+    },
+    "input": {
+      "bg": "surface-2", "border": "1px solid var(--border-input)", "radius": "sm",
+      "focus": "2px ring var(--focus-ring) at offset 2px",
+      "error": { "border": "danger", "helper": "12px error text placed directly below the field" },
+      "labelPosition": "above the field, fg-2 at 13px. Never use placeholder as label."
+    },
+    "table": {
+      "note": "Table-first for lists with 5 or more similar structured items. Zebra striping is forbidden.",
+      "cellPadding": { "y": "8px", "x": "12px" },
+      "rowHeight": "40px",
+      "header": { "color": "fg-2", "fontSize": "12px", "letterSpacing": "0.06em", "textTransform": "uppercase" },
+      "rowHover": "background surface-hover",
+      "numericColumn": { "font": "mono", "features": "tabular-nums", "align": "right" },
+      "divider": "1px solid var(--border)"
+    },
+    "progress": {
+      "height": "2px", "track": "surface-3", "fill": "accent",
+      "note": "Stopping a task MUST stop the animation and freeze the fill in muted. A frozen bar is the strongest signal that a cancel completed."
+    },
+    "badge": { "radius": "sm", "fontSize": "11px", "padding": "2px 6px" },
+    "modal": { "radius": "lg", "width": "480px", "overlay": "rgba(0,0,0,0.6) with backdrop-blur 2px" },
+    "tooltip": { "note": "delay 400ms before showing" }
+  },
+
+  "density": {
+    "note": "Density is a PAGE-level decision, not per-element. See UIUX section 4 rule 8.",
+    "scale": { "3": "gallery", "4": "reading", "5": "read plus occasional interaction", "6": "browse plus occasional config", "7": "monitor, 20 rows visible" },
+    "byPage": {
+      "trial-run":        { "density": 4, "reason": "the owner is reading" },
+      "daily-report":     { "density": 4, "reason": "the owner is reading" },
+      "weekly-report":    { "density": 3, "reason": "review, not scanning. Looser than daily." },
+      "cost-breakdown":  { "density": 4, "note": "ALWAYS 4. Density 7 here would turn the cost block back into an invoice." },
+      "session":          { "density": 5, "reason": "reading plus occasional interaction" },
+      "agent-management": { "density": 6, "reason": "browsing plus occasional configuration" },
+      "knowledge-base":   { "density": 6 },
+      "job-card-wall":    { "density": 6 },
+      "task-center":      { "density": 7, "reason": "monitoring. Table only, no cards." },
+      "usage-billing":    { "density": 7, "reason": "admin view, numeric alignment matters" }
+    },
+    "unknownPage": "Ask team-lead. Do not decide density yourself."
+  },
+
+  "accessibility": {
+    "contrast": { "bodyMin": "4.5:1", "uiComponentMin": "3:1", "largeTextMin": "3:1", "verifiedFailures": 0 },
+    "threeChannelRule": {
+      "mandatory": true,
+      "reason": "Measured: under deuteranopia, warn and danger simulate to 1.00:1 (identical). Under achromatopsia all five semantic colors collapse to gray. Color alone cannot carry state in this palette.",
+      "enforcement": "CI checkable"
+    },
+    "focus": { "style": "outline", "width": "2px", "offset": "2px", "neverRemove": true, "note": "accent ring on accent fill is 1.23:1 and fails. The offset lets page bg show through." },
+    "keyboard": { "shortcut": "Cmd/Ctrl+K global search", "tableNav": "arrow keys", "liveRegion": "aria-live=polite on streaming session text" },
+    "touchTarget": { "min": "44x44px" },
+    "reducedMotion": { "implemented": true }
+  },
+
+  "qualityRules": {
+    "noBareHex": "Component code must not contain hex literals. Only primitives may. Exceptions: #FFFFFF and #000000.",
+    "noAlphaForSemantics": "Never fake a lighter semantic color with alpha. Use the defined -bg tokens.",
+    "noBounceEasing": "cubic-bezier(0.68, -0.55, 0.265, 1.55) is forbidden.",
+    "noEmojiAsIcon": "Functional icons come from Lucide only.",
+    "noGradientText": "background-clip: text is forbidden.",
+    "noLeftColorStripe": "border-left with width > 1px as state emphasis is forbidden.",
+    "accentQuota": "Maximum 2 visible uses of accent per screen. A third means the screen needs restructuring.",
+    "cardRadiusMax": "12px"
+  },
+
+  "verification": {
+    "date": "2026-10-15",
+    "wcag": { "formula": "WCAG 2.1 relative luminance", "surfacesTested": 4, "textFailures": 0 },
+    "cvd": { "simulations": ["deuteranopia", "protanopia", "tritanopia", "achromatopsia"], "keyFinding": "warn vs danger under deuteranopia = 1.00:1" },
+    "icons": { "method": "npm pack + extract + compare declare const", "packageExports": 3782, "verifiedCount": 59, "failures": 0 },
+    "unverified": {
+      "note": "The following are design judgment, NOT measured. Do not let them look validated.",
+      "items": [
+        { "token": "weekly report lookback window", "value": "52 weeks", "reason": "weekly value is longitudinal comparison", "verifyBy": "Phase 2 analytics on actual revisit rate" },
+        { "token": "weekly output collapse threshold", "value": "> 8 items", "reason": "weekly per-employee output is naturally higher than daily", "verifyBy": "Phase 2 telemetry" },
+        { "token": "daily report collapse threshold", "value": "6 items", "reason": "product-decided, based on 5-7 item attention window in chat clients" },
+        { "token": "daily report lookback window", "value": "30 days", "reason": "product-decided, monthly review cycle" },
+        { "token": "small sample threshold", "value": "N < 5", "reason": "below 5 events cannot form a trend" }
+      ]
+    }
+  }
+}

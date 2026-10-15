@@ -1,0 +1,447 @@
+/* ==========================================================================
+   EvoWork Design Tokens - CSS Custom Properties
+   --------------------------------------------------------------------------
+   Source of truth : docs/UIUX.md (1577 lines, 13 chapters)
+   Evidence        : docs/DESIGN-EVIDENCE.md (228 lines, measured data)
+   Generated        : 2026-10-15 by designer
+   Package         : lucide-react@1.57.0 (icons, verified against real exports)
+   --------------------------------------------------------------------------
+   DEFAULT THEME IS DARK. Dark is not a "dark mode" -- it is the native medium.
+   Light theme is fully supported and is NOT a second-class citizen.
+
+   THEME SWITCHING:
+     <html data-theme="dark">   (default)
+     <html data-theme="light">
+
+   TOUCH TARGET: min 44x44px, 8px+ gaps.
+   ALL COLORS VERIFIED: every text token measured on 4 surfaces
+   (bg / surface-1 / surface-2 / surface-3). Failures: 0.
+   ========================================================================== */
+
+
+/* ==========================================================================
+   SECTION 1 - PRIMITIVE: raw palette (theme-independent)
+   These are the ONLY places a hex literal may appear.
+   Component code must reference semantic tokens, never primitives.
+   ========================================================================== */
+
+:root {
+  /* --- Neutral ramp, dark orientation --- */
+  --p-dark-0:  #0B0D0E;   /* app canvas */
+  --p-dark-1:  #111618;   /* sidebar / panel */
+  --p-dark-2:  #171D20;   /* card / input */
+  --p-dark-3:  #1F2629;   /* popover / overlay */
+  --p-dark-hov:#1A2124;   /* hover on dark surface-1 */
+
+  --p-light-0: #FFFFFF;   /* app canvas */
+  --p-light-1: #F7F9F9;   /* sidebar / panel */
+  --p-light-2: #EFF3F3;   /* card / input */
+  --p-light-3: #E7ECEC;   /* popover / overlay */
+  --p-light-hov:#E9EEEE;  /* hover on light surface-1 */
+
+  /* --- Ink ramp (dark) --- */
+  --p-ink-d-1: #E8EAEA;   /* primary text */
+  --p-ink-d-2: #B4BCC0;   /* secondary text */
+  --p-ink-d-3: #949CA1;   /* tertiary / metadata */
+
+  /* --- Ink ramp (light) --- */
+  --p-ink-l-1: #0B1214;
+  --p-ink-l-2: #4B585D;
+  --p-ink-l-3: #5C696E;
+
+  /* --- Accent: cyan-blue, hue 191 deg ---
+     WHY 191 and not teal 173:
+     teal #14B8A6 is only 23 deg from success green #3FBF7F (150 deg).
+     Under deuteranopia the two are indistinguishable. Since "did this
+     employee finish" is THE core state of this product, an unreadable
+     state color is disqualifying. Cyan at 191 deg keeps a 41 deg gap. */
+  --p-accent-d-1: #29B6D6;   /* rest   */
+  --p-accent-d-2: #4CC9E0;   /* hover  */
+  --p-accent-d-3: #1595C2;   /* press  */
+  --p-accent-d-on:#04222B;   /* text on accent fill (not pure black) */
+
+  --p-accent-l-1: #0C6F86;
+  --p-accent-l-2: #095E71;
+  --p-accent-l-3: #084A44;
+  --p-accent-l-on:#FFFFFF;
+
+  /* --- Semantic (dark) --- */
+  --p-succ-d:   #3FBF7F;   /* hue 150 */
+  --p-warn-d:   #E39A2E;   /* hue 36  */
+  --p-dang-d:   #F25C60;   /* hue 358, raised from #F0555A: 4.4987 on s3 */
+  --p-info-d:   #7C8CF8;   /* hue 232 */
+  --p-succ-bg-d:#12261A;
+  --p-warn-bg-d:#2A2114;
+  --p-dang-bg-d:#2C1519;
+  --p-info-bg-d:#181D33;
+  --p-acc-bg-d: #0E2A2E;
+
+  /* --- Semantic (light) --- */
+  --p-succ-l:   #1B7343;
+  --p-warn-l:   #A64908;
+  --p-dang-l:   #C42B2B;
+  --p-info-l:   #4A5BC7;
+  --p-succ-bg-l:#E7F3EC;
+  --p-warn-bg-l:#FBF1E4;
+  --p-dang-bg-l:#FBEBEB;
+  --p-info-bg-l:#EDEFFA;
+  --p-acc-bg-l: #E6F1F4;
+
+  /* --- Borders: TWO tiers, different purposes ---
+     -in / -strong are functional controls and must meet 3:1
+     plain --border is a decorative hairline with no minimum (see evidence) */
+  --p-brd-d:        #232A2D;  /* hairline divider, no minimum */
+  --p-brd-d-strong: #2C3539;  /* card outline / group border */
+  --p-brd-d-in:     #5E6C71;  /* input outline, >= 3:1 required */
+
+  --p-brd-l:        #E2E6E8;
+  --p-brd-l-strong: #CBD3D6;
+  --p-brd-l-in:     #7E8A8F;  /* >= 3:1 required */
+}
+
+
+/* ==========================================================================
+   SECTION 2 - SEMANTIC: role aliases
+   Components reference THIS layer, never primitives.
+   ========================================================================== */
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* --- Surfaces --- */
+  --bg:            var(--p-dark-0);
+  --surface-1:     var(--p-dark-1);
+  --surface-2:     var(--p-dark-2);
+  --surface-3:     var(--p-dark-3);
+  --surface-hover: var(--p-dark-hov);
+
+  /* --- Foreground --- */
+  --fg-1: var(--p-ink-d-1);   /* 16.13:1 on bg */
+  --fg-2: var(--p-ink-d-2);   /* 10.11:1 on bg */
+  --muted: var(--p-ink-d-3);  /* 6.98:1  on bg */
+
+  /* --- Accent --- */
+  --accent:        var(--p-accent-d-1);   /* 8.12:1 on bg */
+  --accent-hover:  var(--p-accent-d-2);   /* 9.96:1 on bg */
+  --accent-press:  var(--p-accent-d-3);
+  --accent-on:     var(--p-accent-d-on);  /* 6.90:1 on accent fill */
+  --accent-bg:     var(--p-acc-bg-d);
+
+  /* --- Semantic --- */
+  --success:    var(--p-succ-d);       /* 8.32:1 on bg */
+  --warn:       var(--p-warn-d);       /* 8.28:1 on bg */
+  --danger:     var(--p-dang-d);       /* 5.79:1 on bg */
+  --info:       var(--p-info-d);       /* 6.46:1 on bg */
+  --success-bg: var(--p-succ-bg-d);
+  --warn-bg:    var(--p-warn-bg-d);
+  --danger-bg:  var(--p-dang-bg-d);
+  --info-bg:    var(--p-info-bg-d);
+
+  /* --- Borders --- */
+  --border:        var(--p-brd-d);        /* decorative hairline */
+  --border-strong: var(--p-brd-d-strong);
+  --border-input:  var(--p-brd-d-in);     /* 3.58:1 on bg, >= 3:1 */
+
+  /* --- Focus ---
+     NOTE: ring sits OUTSIDE the element, so it must contrast with the
+     PAGE background, not with the element fill. An accent-filled button
+     with an accent ring scores 1.23:1 and fails. Always pair ring with
+     an offset so the page bg shows through. */
+  --focus-ring:      var(--p-accent-d-2);   /* 9.96:1 on bg */
+  --focus-ring-w:    2px;
+  --focus-ring-off:  2px;
+
+  /* --- Depth: TWO levels only. L0 flat is 95% of the UI.
+     Shadows are for true overlays only, never for cards. --- */
+  --elev-flat:   none;
+  --elev-ring:   0 0 0 1px var(--border);
+  --elev-raised: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg:            var(--p-light-0);
+  --surface-1:     var(--p-light-1);
+  --surface-2:     var(--p-light-2);
+  --surface-3:     var(--p-light-3);
+  --surface-hover: var(--p-light-hov);
+
+  --fg-1: var(--p-ink-l-1);   /* 18.90:1 on bg */
+  --fg-2: var(--p-ink-l-2);   /* 7.36:1  on bg */
+  --muted: var(--p-ink-l-3);  /* 5.67:1  on bg */
+
+  --accent:        var(--p-accent-l-1);   /* 5.78:1 on bg */
+  --accent-hover:  var(--p-accent-l-2);   /* 7.37:1 on bg */
+  --accent-press:  var(--p-accent-l-3);
+  --accent-on:     var(--p-accent-l-on);  /* 5.78:1 on accent fill */
+  --accent-bg:     var(--p-acc-bg-l);
+
+  --success:    var(--p-succ-l);       /* 5.87:1 on bg */
+  --warn:       var(--p-warn-l);       /* 5.87:1 on bg */
+  --danger:     var(--p-dang-l);       /* 5.63:1 on bg */
+  --info:       var(--p-info-l);       /* 5.81:1 on bg */
+  --success-bg: var(--p-succ-bg-l);
+  --warn-bg:    var(--p-warn-bg-l);
+  --danger-bg:  var(--p-dang-bg-l);
+  --info-bg:    var(--p-info-bg-l);
+
+  --border:        var(--p-brd-l);
+  --border-strong: var(--p-brd-l-strong);
+  --border-input:  var(--p-brd-l-in);     /* 3.55:1 on bg, >= 3:1 */
+
+  --focus-ring:      var(--p-accent-l-1);
+  --focus-ring-w:    2px;
+  --focus-ring-off:  2px;
+
+  --elev-flat:   none;
+  --elev-ring:   0 0 0 1px var(--border);
+  --elev-raised: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+
+/* ==========================================================================
+   SECTION 3 - TYPOGRAPHY
+   Three weights only: 400 / 510 / 590. Never 700+ (that is marketing copy).
+   ========================================================================== */
+
+:root {
+  --font-display: "Inter", "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body:    "Inter", "Noto Sans SC", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:    "JetBrains Mono", "Noto Sans SC", ui-monospace, monospace;
+
+  /* Font loading */
+  --font-loading: swap;   /* use font-display: swap */
+
+  /* --- Weights: 3 levels, no more --- */
+  --weight-regular:  400;   /* body */
+  --weight-medium:   510;   /* table heads, card titles, small emphasis */
+  --weight-semibold: 590;   /* page titles only */
+
+  /* --- Type scale (fixed rem ladder, step 1.125-1.2) --- */
+  --text-xs:    11px;  --lh-xs:    16px;  --ls-xs:    0.01em;
+  --text-sm:    13px;  --lh-sm:    20px;  --ls-sm:    0;
+  --text-base:  14px;  --lh-base:  21px;  --ls-base:  0;
+  --text-md:    16px;  --lh-md:    24px;  --ls-md:    -0.005em;
+  --text-lg:    20px;  --lh-lg:    28px;  --ls-lg:    -0.01em;
+  --text-xl:    24px;  --lh-xl:    32px;  --ls-xl:    -0.01em;
+  --text-2xl:   32px;  --lh-2xl:   40px;  --ls-2xl:   -0.015em;
+
+  /* Uppercase labels MUST be tracked. Small text gets small positive tracking. */
+  --tracking-caps: 0.06em;    /* ALL CAPS labels, table heads */
+  --tracking-tight: -0.02em;  /* >= 24px titles */
+
+  --leading-body:  1.55;
+  --leading-tight: 1.25;
+
+  /* Reading measure: 50-75 characters */
+  --measure-prose:    65ch;   /* ~720px, session and report content */
+  --measure-wide:     100%;
+  --measure-dashboard: 100%;
+}
+
+
+/* ==========================================================================
+   SECTION 4 - SPACING
+   4px grid ONLY. Off-grid values (5 / 7 / 13 / 15 / 22 / 30) are forbidden.
+   Rhythm rule: tight inside groups, loose between groups.
+   ========================================================================== */
+
+:root {
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-12: 48px;   /* between page sections */
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* Semantic spacing shortcuts */
+  --space-group:    var(--space-2);   /* 8px  siblings in a group */
+  --space-group-lg: var(--space-4);   /* 16px card padding */
+  --space-section:  var(--space-12);  /* 48px between sections */
+}
+
+
+/* ==========================================================================
+   SECTION 5 - RADIUS
+   Small radii read as precise. Large radii read as cheap.
+   Card radius must never exceed 12px.
+   ========================================================================== */
+
+:root {
+  --radius-none: 0;
+  --radius-sm:   4px;      /* badges, inputs */
+  --radius-md:   8px;      /* buttons, cards (DEFAULT) */
+  --radius-lg:   12px;     /* modals, large panels */
+  --radius-pill: 9999px;   /* avatars and status chips ONLY */
+}
+
+
+/* ==========================================================================
+   SECTION 6 - MOTION
+   Three durations. No bounce easing, ever.
+   Only three kinds of motion: state confirm, causality, ongoing progress.
+   ========================================================================== */
+
+:root {
+  --motion-instant: 80ms;   /* press, state dot change */
+  --motion-fast:    150ms;  /* hover, selected, expand (BASE UNIT) */
+  --motion-base:    200ms;  /* panel in/out, modal */
+  --motion-slow:    300ms;  /* cross-screen */
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out:      cubic-bezier(0, 0, 0, 1);
+  --ease-in:       cubic-bezier(0.4, 0, 1, 1);
+
+  /* FORBIDDEN: cubic-bezier(0.68, -0.55, 0.265, 1.55)  (bounce/elastic)
+     If you need a spring, that is a design review item, not a local decision. */
+
+  /* Interactive feedback */
+  --press-scale: 0.98;      /* :active scale, tactile without noise */
+  --progress-loop: 1.2s;    /* ongoing progress indicator period */
+}
+
+
+/* ==========================================================================
+   SECTION 7 - LAYOUT
+   ========================================================================== */
+
+:root {
+  --sidebar-w:           240px;
+  --sidebar-w-collapsed: 56px;
+  --topbar-h:            48px;
+  --row-h:               40px;   /* table row */
+  --row-h-dense:         36px;   /* dense table row */
+  --control-h:           32px;   /* buttons, inputs */
+  --control-h-sm:        28px;
+  --toolbar-h:           36px;   /* h-9 filter bar */
+
+  --tap-target:          44px;   /* minimum touch target, WCAG 2.5.5 */
+  --z-base:      0;
+  --z-dropdown:  1000;
+  --z-sticky:    1100;
+  --z-modal:     1200;
+  --z-toast:     1300;
+
+  --breakpoint-xs: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+}
+
+
+/* ==========================================================================
+   SECTION 8 - ICONOGRAPHY
+   Library: lucide-react@1.57.0 (ISC license)
+   All names below verified against real package exports.
+   ========================================================================== */
+
+:root {
+  --icon-size-inline: 16px;   /* in tables, before text */
+  --icon-size-button: 20px;   /* in buttons, nav items */
+  --icon-size-standalone: 24px; /* standalone, status dots, avatars */
+  --icon-stroke: 1.5;         /* NOT the 2px library default */
+  /* stroke 1.5 aligns with our 1px border language */
+}
+
+
+/* ==========================================================================
+   SECTION 9 - COMPONENT SLOTS
+   ========================================================================== */
+
+:root {
+  --btn-radius: var(--radius-md);
+  --btn-padding-y: 6px;
+  --btn-padding-x: 16px;
+  --btn-font: var(--text-sm);
+
+  --input-radius: var(--radius-sm);
+  --input-border: var(--border-input);
+
+  --card-radius: var(--radius-md);
+  --card-padding: var(--space-4);
+
+  --table-cell-padding-y: var(--space-2);
+  --table-cell-padding-x: var(--space-3);
+  --table-header-tracking: var(--tracking-caps);
+
+  --modal-radius: var(--radius-lg);
+  --modal-width: 480px;
+
+  --toast-radius: var(--radius-md);
+}
+
+
+/* ==========================================================================
+   SECTION 10 - COPY CONSTRAINTS (pure BYOK)
+   Product decision 2026-10-15: platform payments removed, BYOK only.
+   These are not suggestions. Violating them breaks a product promise.
+   ========================================================================== */
+
+:root {
+  /* FORBIDDEN copy: "充值" / "余额" / "平台额度"
+     The platform does not handle model fees. There is no top-up page.
+     Never link any budget action to a top-up flow.
+
+     REQUIRED wording:
+       "API 预算"        not "额度"
+       "你的模型账单"     not "平台额度"
+
+     COST SUBJECT: every cost figure refers to the CUSTOMER's own model
+     bill, not a platform invoice. Subscriptions are collected offline.
+
+     SEPARATION RULE: SaaS subscription fee and API cost must never be
+     displayed side by side in one block. Two different payers, and
+     merging them implies the platform earns model fees -- which is
+     exactly the promise this product makes not to make. */
+  --copy-budget-term: "API 预算";
+}
+
+
+/* ==========================================================================
+   SECTION 11 - REDUCED MOTION
+   Mandatory. Ongoing loops become static.
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-instant: 0.01ms;
+    --motion-fast:    0.01ms;
+    --motion-base:    0.01ms;
+    --motion-slow:    0.01ms;
+    --progress-loop:   0.01ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+
+/* ==========================================================================
+   SECTION 12 - FOCUS VISIBILITY
+   Never remove focus rings without replacing them.
+   ========================================================================== */
+
+:focus-visible {
+  outline: var(--focus-ring-w) solid var(--focus-ring);
+  outline-offset: var(--focus-ring-off);
+  border-radius: var(--radius-sm);
+}
+
+/* On accent-filled controls the ring needs the page bg to show through,
+   otherwise accent-on-accent is invisible. */
+.btn-primary:focus-visible {
+  outline-color: var(--focus-ring);
+  box-shadow: 0 0 0 var(--focus-ring-off) var(--bg);
+}

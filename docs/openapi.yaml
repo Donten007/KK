@@ -1,0 +1,2647 @@
+openapi: 3.0.3
+
+info:
+  title: OPCAgentAI API
+  version: 1.0.0
+  description: |
+    多租户 SaaS 平台 API 契约。中小企业老板的「AI 员工」平台。
+
+    ## 契约规则（铁律）
+
+    1. **本文件是前后端唯一机器可读依据。** 前端用 `openapi-typescript` 生成 TS 类型，
+       后端用同一文件校验实现。SPEC.md 第 5 章是本文档的索引与设计约束说明。
+    2. **统一响应格式**：`{ "code": 0, "data": {}, "message": "" }`。
+       `code=0` 成功，非 0 为业务错误码。
+    3. **所有端点必须带 `/api/v1/` 版本前缀。**
+    4. **跨租户访问一律返回 404，绝不返回 403。** 403 本身会泄露资源存在性，
+       形成可批量扫描的 oracle（见 SPEC.md §4.4）。租户内权限不足才用 403。
+    5. **所有 `POST` 创建类端点接受 `Idempotency-Key` 头**（至少类��）。
+
+    ## 两个必须分开的用量视图
+
+    `GET /usage/summary` 与 `GET /settings/usage` **刻意是两个独立 endpoint + 两个独立 schema**，
+    而非同一 endpoint 按角色 oneOf。原因：owner 视图的 schema 里**不得出现 token/model/duration 字段**
+    （连 nullable 都不行）。若共用 schema，泄漏就依赖于「每个人每次都记得剔除」；
+    独立 schema 时泄漏在**结构上不可能发生**（AC-14b / ADR-017）。
+
+    前端 owner 组件若访问 token 字段，将直接编译报错——这是契约层的第一道防线。
+    第二道防线在数据层：owner 口径的数据来源为 `tasks` + `usage_daily` 成本聚合，
+    **不读 `usage_records` 的 token 字段**。
+
+  contact:
+    name: OPCAgentAI
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.opcagentai.com
+    description: 生产环境
+  - url: https://api.staging.opcagentai.com
+    description: 预发环境
+  - url: http://localhost:8000
+    description: 本地开发
+
+tags:
+  - name: auth
+    description: 注册、登录、token 生命周期
+  - name: tenants
+    description: 账套（租户）与成员
+  - name: credentials
+    description: BYOK 密钥管理（永不回显全文）
+  - name: models
+    description: 模型与能力标签
+  - name: job-templates
+    description: 岗位模板库
+  - name: agents
+    description: AI 员工（编制）与组织树
+  - name: goals
+    description: 长任务（Goal）
+  - name: tasks
+    description: 任务中心聚合视图
+  - name: conversations
+    description: 会话
+  - name: events
+    description: SSE 事件流
+  - name: knowledge
+    description: 知识源与检索
+  - name: pending
+    description: 待确认队列
+  - name: reports
+    description: 每日汇报
+  - name: usage
+    description: 用量（owner 口径，无 token）
+  - name: billing
+    description: 计费与预算
+  - name: assets
+    description: 资产中心
+  - name: memories
+    description: 记忆系统
+  - name: integrations
+    description: 集成（企微、出网白名单）
+  - name: audit
+    description: 审计日志
+  - name: analytics
+    description: 埋点上报
+
+security:
+  - bearerAuth: []
+
+paths:
+
+  # ========== auth ==========
+  /api/v1/auth/register:
+    post:
+      tags: [auth]
+      summary: 邮箱注册
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8, writeOnly: true }
+                company_name: { type: string }
+      responses:
+        '201':
+          description: 注册成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResult' }
+        '1001': { $ref: '#/components/responses/ValidationFailed' }
+        '1007': { $ref: '#/components/responses/RateLimited' }
+
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      summary: 登录，签发 token pair
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, writeOnly: true }
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResult' }
+        '1001': { $ref: '#/components/responses/ValidationFailed' }
+        '1002': { $ref: '#/components/responses/Unauthorized' }
+        '1007': { $ref: '#/components/responses/RateLimited' }
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [auth]
+      summary: 刷新 token（refresh rotation，旧 token 立即失效）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        '200':
+          description: 刷新成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+        '1002': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      summary: 吊销 refresh token
+      responses:
+        '200':
+          description: 已登出
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+
+  /api/v1/auth/me:
+    get:
+      tags: [auth]
+      summary: 当前用户信息
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/User' }
+
+  # ========== tenants ==========
+  /api/v1/tenants:
+    post:
+      tags: [tenants]
+      summary: 创建账套，签发 tenant_code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        '201':
+          description: 已创建
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Tenant' }
+
+  /api/v1/tenants/current:
+    get:
+      tags: [tenants]
+      summary: 账套详情
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Tenant' }
+    patch:
+      tags: [tenants]
+      summary: 更新账套（owner）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Tenant' }
+        '1003': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      tags: [tenants]
+      summary: 彻底删除账套（AC-16）
+      description: |
+        **彻底删除含向量表与 LangGraph checkpoint 表**（AC-16）。
+        仅软删除业务表会留下向量与检查点残留，等于没删。
+
+        删除范围（每一步均须执行，**失败即中止，不允许部分删除后返回成功**）：
+        1. 全部业务表（RLS 强制）
+        2. `kb_chunks`（pgvector 向量表）—— **易漏项**
+        3. `langgraph_checkpoints.*`（任务 checkpoint）—— **易漏项**
+        4. `auth_refresh_tokens` / `analytics_events`
+        5. `tenant_egress_allowlist`
+        6. 对象存储前缀 `tenants/{code}/`
+        7. Redis key 前缀 `tenant:{id}:`
+        8. 该租户全部沙箱（按 `--label tenant_id` 批量销毁）
+
+        **过程可审计**：每一步写 `audit_logs`，事件类型 `tenant_purge_step`。
+      parameters:
+        - name: X-Confirm
+          in: header
+          required: true
+          description: 防误删确认头。缺此头直接拒绝，避免误触。
+          schema:
+            type: string
+            enum: [DELETE-ALL-DATA]
+      responses:
+        '200':
+          description: 已删除
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '1003': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/tenants/current/export:
+    get:
+      tags: [tenants]
+      summary: 数据导出（owner）
+      responses:
+        '200':
+          description: 导出包
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/ExportPackage' }
+        '1003': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/tenants/current/switch:
+    post:
+      tags: [tenants]
+      summary: 切换当前账套
+      description: |
+        返回该账套作用域下的新 access token。
+
+        **切换的是 RLS 的 `SET LOCAL app.current_tenant` 上下文**——
+        切换后所有后续查询自动被新租户的 RLS 策略约束，前端不需要传 tenant_id。
+
+        跨租户语义：用户不属于目标账套时返回 404（不返回 403）。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id]
+              properties:
+                tenant_id: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 切换成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/AuthResult' }
+        '1004': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/tenants/current/members:
+    get:
+      tags: [tenants]
+      summary: 成员列表
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Member' }
+    post:
+      tags: [tenants]
+      summary: 邀请成员（admin）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email: { type: string, format: email }
+                role: { $ref: '#/components/schemas/TenantRole' }
+      responses:
+        '201':
+          description: 已邀请
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Member' }
+        '1003': { $ref: '#/components/responses/Forbidden' }
+        '1005': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/tenants/current/members/{user_id}:
+    parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [tenants]
+      summary: 改角色（立即生效，admin）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { $ref: '#/components/schemas/TenantRole' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Member' }
+        '1003': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      tags: [tenants]
+      summary: 移除成员（admin）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '1003': { $ref: '#/components/responses/Forbidden' }
+
+  # ========== credentials ==========
+  /api/v1/settings/credentials:
+    get:
+      tags: [credentials]
+      summary: 凭据列表（只返回末 4 位，永不回显全文）
+      description: '**响应中不存在明文密钥字段**（AC-15）。仅有 `key_suffix` 末 4 位。'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Credential' }
+    post:
+      tags: [credentials]
+      summary: 新增 BYOK 密钥（admin）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, api_key, label]
+              properties:
+                provider: { $ref: '#/components/schemas/Provider' }
+                api_key: { type: string, writeOnly: true, description: '仅写入，绝不回显' }
+                label: { type: string }
+      responses:
+        '201':
+          description: 已创建
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Credential' }
+        '1003': { $ref: '#/components/responses/Forbidden' }
+        '3003': { $ref: '#/components/responses/InvalidCredential' }
+
+  /api/v1/settings/credentials/{id}:
+    parameters:
+      - $ref: '#/components/parameters/CredentialId'
+    patch:
+      tags: [credentials]
+      summary: 轮换密钥（admin）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [api_key]
+              properties:
+                api_key: { type: string, writeOnly: true }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Credential' }
+    delete:
+      tags: [credentials]
+      summary: 删除密钥（admin）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+
+  /api/v1/settings/credentials/{id}/verify:
+    parameters:
+      - $ref: '#/components/parameters/CredentialId'
+    post:
+      tags: [credentials]
+      summary: 连通性 + 能力探测
+      description: |
+        调用模型厂商 API 探测能力，**探测结果缓存 24h**。
+        探测失败一律判为**不支持**（fail-closed），不fail-open。
+        探测本身会产生少量费用。
+      responses:
+        '200':
+          description: 探测完成
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/CredentialVerifyResult' }
+        '3003': { $ref: '#/components/responses/InvalidCredential' }
+
+  # ========== models ==========
+  /api/v1/models:
+    get:
+      tags: [models]
+      summary: 支持的模型 + 能力标签
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/ModelCapability' }
+
+  /api/v1/models/{provider}/{model_id}:
+    parameters:
+      - name: provider
+        in: path
+        required: true
+        schema: { $ref: '#/components/schemas/Provider' }
+      - name: model_id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [models]
+      summary: 单模型能力详情
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/ModelCapability' }
+        '1004': { $ref: '#/components/responses/NotFound' }
+
+  # ========== job templates ==========
+  /api/v1/job-templates:
+    get:
+      tags: [job-templates]
+      summary: 岗位卡片墙
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/JobTemplate' }
+
+  /api/v1/job-templates/{id}:
+    parameters:
+      - $ref: '#/components/parameters/JobTemplateId'
+    get:
+      tags: [job-templates]
+      summary: 岗位详情（五要素 + 四组技术字段）
+      description: |
+        四组技术字段任一为空时，该岗位**不允许上架**：
+        `required_caps` / `optional_caps` / `expected_idle_steps` / `expected_total_steps`。
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/JobTemplate' }
+        '1004': { $ref: '#/components/responses/NotFound' }
+
+  # ========== agents ==========
+  /api/v1/agents:
+    get:
+      tags: [agents]
+      summary: AI 员工列表（含值班状态、本月成本）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Agent' }
+    post:
+      tags: [agents]
+      summary: 从岗位模板创建 AI 员工（admin）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [job_template_id, name]
+              properties:
+                job_template_id: { type: string }
+                name: { type: string }
+                parent_id: { type: string, format: uuid, nullable: true, description: '汇报线父节点' }
+      responses:
+        '201':
+          description: 已创建
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Agent' }
+        '1003': { $ref: '#/components/responses/Forbidden' }
+        '1005': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/agents/{id}:
+    parameters:
+      - $ref: '#/components/parameters/AgentId'
+    get:
+      tags: [agents]
+      summary: AI 员工详情
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Agent' }
+        '1004': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [agents]
+      summary: 更新（**执行中改配置必须被拒绝**，admin）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Agent' }
+        '1005': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [agents]
+      summary: 删除（在途任务跑完，admin）
+      description: 停用时**跑完当前任务 + 新任务不再派发**（不立即终止在途任务）。
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+
+  /api/v1/agents/org/tree:
+    get:
+      tags: [agents]
+      summary: 组织树（递归 CTE，max_depth=10）
+      parameters:
+        - name: root_agent_id
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/OrgNode' }
+
+  /api/v1/agents/{id}/schedule:
+    parameters:
+      - $ref: '#/components/parameters/AgentId'
+    get:
+      tags: [agents]
+      summary: 排班配置
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Schedule' }
+    put:
+      tags: [agents]
+      summary: 设置排班（**未成功试跑禁止开启**，admin）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Schedule' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Schedule' }
+        '1005': { $ref: '#/components/responses/Conflict' }
+
+  # ========== goals ==========
+  /api/v1/goals:
+    get:
+      tags: [goals]
+      summary: Goal 列表
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/GoalStatus' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/PagedList' }
+    post:
+      tags: [goals]
+      summary: 创建 Goal（立即返回 goal_id，不等完成）
+      description: |
+        创建即返回，任务在后台执行。响应含**步骤数预估与费用预估**。
+        预算不足时在**执行前阻断**（402），不允许透支。
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id, input]
+              properties:
+                agent_id: { type: string, format: uuid }
+                input: { type: string }
+                conversation_id: { type: string, format: uuid, nullable: true }
+      responses:
+        '202':
+          description: 已受理
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Goal' }
+        '2001': { $ref: '#/components/responses/BalanceInsufficient' }
+        '2002': { $ref: '#/components/responses/BudgetExhausted' }
+        '3001': { $ref: '#/components/responses/CapabilityInsufficient' }
+
+  /api/v1/goals/{id}:
+    parameters:
+      - $ref: '#/components/parameters/GoalId'
+    get:
+      tags: [goals]
+      summary: 详情（含预估步数/费用对比）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/GoalDetail' }
+        '1004': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/goals/{id}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/GoalId'
+    post:
+      tags: [goals]
+      summary: 中止（幂等，先置 stopping）
+      description: |
+        **幂等**：重复调用返回同一状态，不报错。UI 的 disabled 按钮是最后防线但不是唯一防线
+        （用户可能开两个标签页或网络重试）。
+
+        **实现顺序不可颠倒**：先置 `status=stopping` 再发协作式取消信号。
+        否则用户点中止到看到反馈有 1-3 秒延迟，UI 无法显示中间态。
+
+        **已完成步骤保留且不扣费**。5 秒未收敛则由巡检器强制置 `cancelled`。
+      responses:
+        '200':
+          description: 已受理
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/CancelResult' }
+        '1004': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/goals/{id}/resume:
+    parameters:
+      - $ref: '#/components/parameters/GoalId'
+    post:
+      tags: [goals]
+      summary: 断点续跑
+      description: 从最后 checkpoint 继续，**已完成步骤不重复执行、不重复计费**。
+      responses:
+        '202':
+          description: 已受理
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Goal' }
+
+  /api/v1/goals/{id}/steps:
+    parameters:
+      - $ref: '#/components/parameters/GoalId'
+    get:
+      tags: [goals]
+      summary: 分步轨迹（**业务语言**，禁用 Agent/节点/token 术语）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/TaskStep' }
+
+  /api/v1/goals/{id}/events:
+    parameters:
+      - $ref: '#/components/parameters/GoalId'
+    get:
+      tags: [goals]
+      summary: 事件流（按角色过滤 visibility）
+      description: |
+        **服务端按调用方角色过滤**：owner 只返回 `visibility='owner'` 的事件，
+        admin 返回全部。过滤在服务端完成，不依赖前端。
+
+        L3 审计类事件（`raw_prompt` / `raw_completion` / `token_usage`）**绝不返回给 owner**。
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/GoalEvent' }
+
+  # ========== tasks ==========
+  /api/v1/tasks:
+    get:
+      tags: [tasks]
+      summary: 任务中心聚合视图
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/GoalStatus' }
+        - name: agent_id
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/PagedList' }
+
+  /api/v1/tasks/{id}/retry:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [tasks]
+      summary: 失败重试
+      responses:
+        '202':
+          description: 已受理
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+
+  # ========== conversations ==========
+  /api/v1/conversations:
+    post:
+      tags: [conversations]
+      summary: 创建会话
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id]
+              properties:
+                agent_id: { type: string, format: uuid }
+                title: { type: string }
+      responses:
+        '201':
+          description: 已创建
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Conversation' }
+
+  /api/v1/conversations/{id}/messages:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [conversations]
+      summary: 历史消息
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Message' }
+    post:
+      tags: [conversations]
+      summary: 发送消息（触发 Goal）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content: { type: string }
+      responses:
+        '202':
+          description: 已受理
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Goal' }
+        '2001': { $ref: '#/components/responses/BalanceInsufficient' }
+
+  # ========== events (SSE) ==========
+  /api/v1/events/stream:
+    get:
+      tags: [events]
+      summary: 单条聚合 SSE 连接
+      description: |
+        **前端只开这一条连接**，服务端按用户订阅的 goal 做多路复用。
+        原因：HTTP/1.1 下浏览器对同源有 6 条并发连接硬上限；
+        每个任务开一条会在第 7 个任务时全部失败。
+
+        **断线续传**：支持标准 `Last-Event-ID` 头，浏览器自动重连并携带，
+        服务端从该seq 续发。**零业务代码参与重连**。
+
+        **代理必需配置**（否则流式失效）：
+        - Nginx：`X-Accel-Buffering: no` + `proxy_buffering off`
+        - Cloudflare：100s空闲超时 → 必须每 30s 发`: keepalive\n\n` 心跳
+        - ALB：60s 空闲超时 → 调至 300s
+
+        按调用方角色过滤 `visibility`（owner 只收owner 事件）。
+      parameters:
+        - name: Last-Event-ID
+          in: header
+          required: false
+          schema: { type: string }
+          description: 浏览器自动携带，用于断线续传
+      responses:
+        '200':
+          description: SSE 流
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                example: |
+                  id: 42
+                  event: step_completed
+                  data: {"goal_id":"...","step_ordinal":7,"title":"读取竞品页面 7/10"}
+
+  # ========== knowledge ==========
+  /api/v1/knowledge/sources:
+    get:
+      tags: [knowledge]
+      summary: 知识源列表（含摄取进度）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/KnowledgeSource' }
+    post:
+      tags: [knowledge]
+      summary: 上传知识源
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          description: 已受理（**摄取过程对用户可见**）
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/KnowledgeSource' }
+        '1006': { $ref: '#/components/responses/PayloadTooLarge' }
+
+  /api/v1/knowledge/sources/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [knowledge]
+      summary: 详情（解析行数/字段清单/不一致项）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/KnowledgeSource' }
+    delete:
+      tags: [knowledge]
+      summary: 删除知识源
+      description: 删除元数据的**同时删除向量**（同事务，不留孤儿向量）。
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+
+  /api/v1/knowledge/sources/{id}/reindex:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [knowledge]
+      summary: 重新索引
+      responses:
+        '202':
+          description: 已受理
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+
+  /api/v1/knowledge/search:
+    post:
+      tags: [knowledge]
+      summary: 检索（结构化过滤 + 向量 top-K）
+      description: |
+        **向量检索必须叠加租户过滤**：RLS 策略 + 查询层显式 `tenant_id` 条件，两者都要。
+        且必须设`hnsw.iterative_scan = relaxed_order`，否则过滤后返回行数不足 K 条。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string }
+                top_k: { type: integer, default: 10, maximum: 50 }
+                filters:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/SearchHit' }
+
+  # ========== pending ==========
+  /api/v1/pending:
+    get:
+      tags: [pending]
+      summary: 待确认列表（含依据行）
+      description: |
+        **只包含 `needs_human_input` 类事件，不含 `circuit_break`。**
+        熔断是系统问题不是需要老板做决定的事，走任务行内联提示，不占队列名额。
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/PendingItem' }
+
+  /api/v1/pending/{id}/resolve:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [pending]
+      summary: 解决（approve / amend / skip）
+      description: |
+        **支持「带修改恢复」**：amend 可携带修改后的值，
+        执行流程从暂停点继续并使用新值（LangGraph `Command(resume=...)`）。
+        这是审批流的核心语义，不是简单的批准/拒绝二分。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [approve, reject, amend, skip] }
+                reason: { type: string }
+                payload:
+                  type: object
+                  additionalProperties: true
+                  description: amend 时携带的修改值
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+
+  # ========== reports ==========
+  /api/v1/reports/daily:
+    get:
+      tags: [reports]
+      summary: 今日汇报（四板块固定顺序）
+      description: |
+        四板块顺序不可调：`做完了` / `要你管` / `我停下来过` / `花的钱`，
+        第五块「算给你看」。无异常的板块显示「今天没有要我管的」而非隐藏。
+
+        **「我停下来过」是固定板块而非异常日志**——失败是交付内容的一部分。
+
+        **汇报禁用技术语汇**：不出现调用/会话/任务/token/Agent，
+        改用处理/跑完/次数。
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/DailyReport' }
+
+  /api/v1/reports/daily/{date}:
+    parameters:
+      - name: date
+        in: path
+        required: true
+        schema: { type: string, format: date }
+        description: 回看窗口 ≤ 30 天
+    get:
+      tags: [reports]
+      summary: 历史回看
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/DailyReport' }
+        '1004': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/reports/weekly:
+    get:
+      tags: [reports]
+      summary: 周报（含积压）
+      description: |
+        **周报必须显示积压，这是与日报最关键的差异。**
+
+        理由：若老板每天处理 1 件、每周新增 8 件，日报每天显示「1 件」看起来可控，
+        周报显示「5 件积压，最早已等 3 天」才是真实信号。
+        **日清模式会系统性掩盖慢性问题。**
+
+        **统计区间 = 本周新增 + 期末仍未处理**（不是仅本周新增）。
+
+        **禁止折叠积压项**——折叠即隐藏，而 `waiting_days` 是升级信号。
+      parameters:
+        - name: week_start
+          in: query
+          required: false
+          schema: { type: string, format: date }
+          description: 周起始日，默认上周一
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/WeeklyReport' }
+
+  /api/v1/reports/agent/{agent_id}:
+    parameters:
+      - $ref: '#/components/parameters/AgentId'
+    get:
+      tags: [reports]
+      summary: 按 AI 员工查看
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/DailyReport' }
+
+  /api/v1/reports/cost-breakdown:
+    get:
+      tags: [reports]
+      summary: 员工维度成本构成（业务口径，**无 token**）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/CostBreakdown' }
+
+  # ========== usage ==========
+  /api/v1/usage/summary:
+    get:
+      tags: [usage]
+      summary: owner 口径用量（业务语言）
+      description: |
+        **OwnerUsageSchema 内不存在 token / model / duration 字段，连 nullable 都不行。**
+
+        这是契约层的第一道防线：前端用 `openapi-typescript` 生成的类型里没有这些字段，
+        owner 组件访问它们会**直接编译报错**。
+
+        数据来源为 `tasks` + `usage_daily` 成本聚合，**不读 `usage_records` 的 token 字段**
+        （第二道防线，即使controller 逻辑被改也拿不到数据）。
+
+        **自动化断言（AC-14b 配套）**：调用本端点后递归搜索响应 JSON，
+        断言无任何 key 包含 token / model / duration。有人偷偷加回字段时脚本会红。
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/OwnerUsageSummary' }
+        '1003': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/settings/usage:
+    get:
+      tags: [usage]
+      summary: admin 口径用量（完整技术口径）
+      description: |
+        与 `/usage/summary` **刻意是两个独立 endpoint + 两个独立 schema**，
+        而非同一 endpoint 按角色 oneOf。原因见 OwnerUsageSummary 描述。
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/AdminUsageSummary' }
+        '1003': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/settings/billing/budgets:
+    get:
+      tags: [billing]
+      summary: 各编制月度预算（owner）
+      description: |
+        纯 BYOK 语义（ADR-019）：预算闸门的目的从「平台止损」改为「**帮客户盯自己的模型账单**」。
+
+        - 达 80%：定时任务**继续执行** + 推送预警 + 告知「接下来 3 个定时任务预计再花 ¥60」
+        - 达 100%：**定时**任务不执行 + 推送待办 + 加额指引（引导联系客户经理，**加额是线下动作**）
+        - 达 100% 但客户**主动发起**：**只警告不阻断**——客户有权花自己的钱
+
+        区分「客户主动」与「系统定时」是这条的落地关键。
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Budget' }
+
+  /api/v1/settings/billing/budgets/{agent_id}:
+    parameters:
+      - $ref: '#/components/parameters/AgentId'
+    put:
+      tags: [billing]
+      summary: 设置月度预算上限（owner）
+      description: |
+        预算上限性质是「**提醒阈值**」而非「平台熔断线」——客户花的是自己的钱，
+        我们无权替他决定不能花，但必须让他知道。
+
+        加额走线下签约联系客户经理，**不做线上充值**。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [monthly_limit_cents]
+              properties:
+                monthly_limit_cents: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Budget' }
+
+  # ========== assets / memories ==========
+  /api/v1/assets:
+    get:
+      tags: [assets]
+      summary: 资产中心列表
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/PagedList' }
+
+  /api/v1/memories:
+    get:
+      tags: [memories]
+      summary: 记忆列表
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Memory' }
+
+  /api/v1/memories/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [memories]
+      summary: 编辑记忆
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Memory' }
+    delete:
+      tags: [memories]
+      summary: 删除记忆
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+
+  # ========== integrations ==========
+  /api/v1/settings/wecom:
+    get:
+      tags: [integrations]
+      summary: 企微配置（admin）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/WecomConfig' }
+    post:
+      tags: [integrations]
+      summary: 保存 webhook（admin）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [webhook_url]
+              properties:
+                webhook_url: { type: string, format: uri, writeOnly: true }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/WecomConfig' }
+
+  /api/v1/settings/wecom/test:
+    post:
+      tags: [integrations]
+      summary: 发送测试消息（admin）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+
+  /api/v1/settings/egress-allowlist:
+    get:
+      tags: [integrations]
+      summary: 出网白名单（admin）
+      description: |
+        客户自有域名白名单，用于 L1 抓取。**提交后需平台审核**（防止被当作通用爬虫）。
+        G2 限流：单域名 ≥2s，单租户 ≤20 请求/分钟，全局 ≤200/分钟（服务端强制）。
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/EgressEntry' }
+    post:
+      tags: [integrations]
+      summary: 提交域名（需平台审核，admin）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [domain]
+              properties:
+                domain: { type: string }
+      responses:
+        '201':
+          description: 已提交待审核
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/EgressEntry' }
+
+  /api/v1/settings/egress-allowlist/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags: [integrations]
+      summary: 移除域名（admin）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+
+  # ========== audit ==========
+  /api/v1/settings/audit-logs:
+    get:
+      tags: [audit]
+      summary: 审计日志（append-only，admin）
+      description: '**该表 REVOKE UPDATE, DELETE**（数据库层，非应用层自律）。'
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: event_type
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/PagedList' }
+
+  # ========== analytics ==========
+  /api/v1/analytics/events:
+    post:
+      tags: [analytics]
+      summary: 埋点上报
+      description: |
+        **后端按「事件名 + 属性白名单」过滤后才入库**，未知属性一律丢弃并计入告警指标。
+
+        前端不采集不够——任何人加一行 `trackEvent('x', {...任意字段})` 就能绕过隐私承诺，
+        后端要守第二道。
+
+        **禁止上报**：IP、User-Agent、原始输入内容、文件名、文件内容。
+        保留期 180 天，到期自动删除。
+
+        成本准确度**不走本端点**，直接从 `usage_records` 表计算。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [events]
+              properties:
+                events:
+                  type: array
+                  maxItems: 20
+                  items:
+                    type: object
+                    required: [name, properties]
+                    properties:
+                      name:
+                        type: string
+                        description: |
+                          **必须在白名单枚举内，不在即整条拒绝**（TRACKING-GUARD 防线 1）。
+
+                          契约层声明 enum 而非 `string`，使前端 `openapi-typescript`
+                          生成的类型天然受限——**写错事件名在编译期就报错**，
+                          而不是等到运行时被后端丢弃。
+
+                          与 TRACKING-WHITELIST.md 由 `verify-tracking.sh` 做双向差集校验，
+                          任一方向有差异即阻断发布。
+                        enum:
+                          - signup_complete
+                          - company_size_selected
+                          - job_template_viewed
+                          - job_template_selected
+                          - agent_created
+                          - first_run_submitted
+                          - first_run_completed
+                          - first_report_viewed
+                          - session_start
+                          - owner_report_viewed
+                          - admin_usage_viewed
+                          - daily_report_clicked
+                          - agent_switched
+                          - task_completed
+                          - task_escalated_to_human
+                          - escalation_resolved
+                          - task_failed
+                          - task_resumed_from_checkpoint
+                          - task_circuit_broken
+                          - budget_warning_triggered
+                          - budget_exhausted
+                          - cost_viewed
+                          - owner_report_cost_expanded
+                          - trust_metric_expanded
+                          - pricing_page_viewed
+                          - upgrade_click
+                          - subscription_started
+                          - agent_second_created
+                          - error_occurred
+                          - model_fallback_triggered
+                          - key_invalid_detected
+
+                      properties:
+                        type: object
+                        additionalProperties: true
+                        description: |
+                          属性必须在**该事件的属性白名单**内，未知属性丢弃并计入 `dropped_attributes`。
+
+                          **值长度阈值（TRACKING-GUARD 防线 3）**：单个字符串属性值
+                          **> 500 字符 → 整条事件丢弃**。本产品合法属性（ID、状态码、
+                          时长、金额、模板 ID）均不超过 50 字符；超长值大概率是内容而非元数据。
+                          这条不依赖「猜对字段名」，而是用长度这个不随命名变化的特征做判据。
+                      timestamp: { type: string, format: date-time }
+      responses:
+        '202':
+          description: 已接收
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          accepted: { type: integer }
+                          dropped: { type: integer }
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string, format: uuid }
+      description: 创建类端点的幂等键，重试时返回同一结果
+    GoalId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AgentId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    JobTemplateId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    CredentialId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    ValidationFailed:
+      description: 参数校验失败（code 1001）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Unauthorized:
+      description: 未认证或 token 过期（code 1002）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Forbidden:
+      description: 租户内权限不足（code 1003）。**跨租户禁止使用此码，一律 404。**
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    NotFound:
+      description: |
+        资源不存在**或跨租户（不区分）**（code 1004）。
+        禁止用 403 表达跨租户——403 本身会泄露资源存在性。
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Conflict:
+      description: 资源冲突（code 1005）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    PayloadTooLarge:
+      description: 上传超限（code 1006）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    RateLimited:
+      description: 触发限流（code 1007）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    BalanceInsufficient:
+      description: 余额不足，预算预占失败（code 2001）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    BudgetExhausted:
+      description: 月度预算用尽（code 2002）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    CapabilityInsufficient:
+      description: 模型能力不满足（code 3001，fail-closed）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    InvalidCredential:
+      description: 密钥无效或余额不足（code 3003）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  schemas:
+
+    # ---- 统一响应 ----
+    Envelope:
+      type: object
+      required: [code, data, message]
+      properties:
+        code: { type: integer, example: 0 }
+        data: { type: object, nullable: true }
+        message: { type: string, example: '' }
+
+    ErrorEnvelope:
+      type: object
+      required: [code, data, message]
+      properties:
+        code: { type: integer, example: 1004 }
+        data: { type: object, nullable: true }
+        message: { type: string, example: '资源不存在' }
+
+    PagedList:
+      type: object
+      required: [items, total, page, limit, hasMore]
+      properties:
+        items: { type: array, items: { type: object } }
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+        hasMore: { type: boolean }
+
+    # ---- 身份 ----
+    TenantRole:
+      type: string
+      enum: [owner, admin, member, viewer]
+      description: |
+        租户内角色。**权限感知 Function Calling：过滤在发送给 LLM 之前完成**，
+        让 LLM 根本看不到无权工具（而不是「知道但不能用」）。
+
+    Provider:
+      type: string
+      enum: [openai, anthropic, deepseek, zhipu]
+
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        name: { type: string }
+        created_at: { type: string, format: date-time }
+
+    TokenPair:
+      type: object
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+        token_type: { type: string, example: Bearer }
+        expires_in: { type: integer, example: 900, description: 'access token 有效期（秒）' }
+
+    AuthResult:
+      type: object
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+        tenant: { $ref: '#/components/schemas/Tenant' }
+        tokens: { $ref: '#/components/schemas/TokenPair' }
+
+    Tenant:
+      type: object
+      properties:
+        id: { type: string, format: uuid, description: '内部主键，不对外暴露' }
+        code:
+          type: string
+          description: '账套号，对外可见可口述，如 AC-8F3K2M9W。**不可用于数据库关联**（可被枚举）。'
+          example: AC-8F3K2M9W
+        name: { type: string }
+        plan: { type: string, enum: [trial, standard, scale, enterprise] }
+        status: { type: string, enum: [active, suspended, deleted] }
+        created_at: { type: string, format: date-time }
+
+    Member:
+      type: object
+      properties:
+        user_id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/TenantRole' }
+        created_at: { type: string, format: date-time }
+
+    ExportPackage:
+      type: object
+      description: '含知识源、向量、任务、汇报、**记忆**。不含 checkpoint（可再生成）。'
+      properties:
+        download_url: { type: string, format: uri }
+        expires_at: { type: string, format: date-time }
+        file_count: { type: integer }
+
+    # ---- 凭据 ----
+    Credential:
+      type: object
+      description: |
+        **本schema 中不存在明文密钥字段**（AC-15）。
+        仅有 `key_suffix` 末 4 位，供用户辨识「我填的是哪一把」。
+      properties:
+        id: { type: string, format: uuid }
+        provider: { $ref: '#/components/schemas/Provider' }
+        label: { type: string }
+        key_suffix: { type: string, example: '****abcd', description: '仅末 4 位' }
+        status: { type: string, enum: [active, invalid, exhausted] }
+        created_at: { type: string, format: date-time }
+
+    CredentialVerifyResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        capabilities: { $ref: '#/components/schemas/Capabilities' }
+        error_code: { type: string, nullable: true }
+        probed_at: { type: string, format: date-time }
+
+    # ---- 模型能力 ----
+    Capabilities:
+      type: object
+      required: [vision, tool_use, long_context, json_schema, streaming]
+      properties:
+        vision: { type: boolean }
+        tool_use: { type: boolean }
+        long_context: { type: boolean }
+        json_schema: { type: boolean }
+        streaming: { type: boolean }
+
+    ModelCapability:
+      type: object
+      description: |
+        能力标签来自 `model_capabilities` 表（权威）+ 厂商 API 探测（补充，缓存 24h）。
+        **fail-closed**：探测失败一律判为不支持。
+      properties:
+        provider: { $ref: '#/components/schemas/Provider' }
+        model_id: { type: string }
+        capabilities: { $ref: '#/components/schemas/Capabilities' }
+        context_window: { type: integer, nullable: true }
+        source: { type: string, enum: [manual, api_probe, unknown] }
+        updated_at: { type: string, format: date-time }
+
+    # ---- 岗位 ----
+    JobTemplate:
+      type: object
+      description: |
+        岗位卡片墙。**四组技术字段任一为空则不允许上架**：
+        `required_caps` / `optional_caps` / `expected_idle_steps` / `expected_total_steps`。
+
+        `expected_idle_steps` 是无进展熔断阈值，**由岗位声明而非全局硬编码**——
+        「下载 100 个页面」每步产出物相同是正常的，「读一份 Excel」第 3 步没产出才是卡死。
+      properties:
+        id: { type: string }
+        name: { type: string }
+        icon: { type: string, example: 'Briefcase', description: 'lucide-react 图标名' }
+        summary: { type: string, description: '一句话职责' }
+        prerequisites: { type: array, items: { type: string }, description: '上岗前置条件' }
+        deliverables: { type: array, items: { type: string }, description: '交付物' }
+        required_caps:
+          type: array
+          items: { type: string, enum: [vision, tool_use, long_context, json_schema, streaming] }
+        optional_caps:
+          type: array
+          items: { type: string, enum: [vision, tool_use, long_context, json_schema, streaming] }
+        expected_idle_steps: { type: integer, default: 5 }
+        expected_total_steps: { type: integer }
+        difficulty: { type: string, enum: [low, medium, high], description: '上线顺序依据' }
+
+    # ---- AI 员工 ----
+    Agent:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        job_template_id: { type: string }
+        parent_id: { type: string, format: uuid, nullable: true, description: '汇报线父节点' }
+        status: { type: string, enum: [active, disabled] }
+        model_provider: { $ref: '#/components/schemas/Provider' }
+        model_id: { type: string, nullable: true }
+        month_cost_cents: { type: integer }
+        month_budget_cents: { type: integer }
+        created_at: { type: string, format: date-time }
+
+    OrgNode:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        parent_id: { type: string, format: uuid, nullable: true }
+        name: { type: string }
+        depth: { type: integer, maximum: 10, description: '**递归 CTE 硬上限 10**，防循环引用' }
+        effective_permission: { $ref: '#/components/schemas/TenantRole' }
+
+    Schedule:
+      type: object
+      properties:
+        enabled: { type: boolean, description: '**未成功试跑过不允许开启**' }
+        schedule_type: { type: string, enum: [daily, weekday, weekly, cron] }
+        cron_expr: { type: string, nullable: true, description: '仅 schedule_type=cron 时必填' }
+        timezone: { type: string, example: 'Asia/Shanghai' }
+        last_trial_run_at: { type: string, format: date-time, nullable: true }
+
+    # ---- Goal ----
+    GoalStatus:
+      type: string
+      enum: [pending, running, stopping, waiting_approval, completed, failed, cancelled, expired]
+
+    Goal:
+      type: object
+      properties:
+        id: { type: string, format: uuid, description: '= thread_id，**必须与 goal_id 相同**' }
+        agent_id: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/GoalStatus' }
+        title: { type: string }
+        estimated_steps: { type: integer }
+        actual_steps: { type: integer }
+        estimated_cost_cents: { type: integer }
+        actual_cost_cents: { type: integer }
+        created_at: { type: string, format: date-time }
+
+    GoalDetail:
+      allOf:
+        - $ref: '#/components/schemas/Goal'
+        - type: object
+          properties:
+            input: { type: string }
+            resumed_count: { type: integer, description: '断点续跑次数' }
+            circuit_break_count: { type: integer }
+
+    StepStatus:
+      type: string
+      enum: [pending, running, succeeded, failed, skipped]
+
+    TaskStep:
+      type: object
+      description: |
+        业务步骤。**标题用业务语言**（「读取竞品页面 7/10」），
+        不出现Agent / 节点 / token 等术语（汇报禁用技术语汇）。
+      properties:
+        step_ordinal: { type: integer, description: '1-based，用户可见' }
+        title: { type: string }
+        status: { $ref: '#/components/schemas/StepStatus' }
+        cost_cents: { type: integer }
+        started_at: { type: string, format: date-time, nullable: true }
+        ended_at: { type: string, format: date-time, nullable: true }
+        error_code: { type: string, nullable: true, description: '枚举值，**不存原始异常全文**' }
+
+    GoalEvent:
+      type: object
+      description: |
+        `visibility` 决定可见性。**服务端按调用方角色过滤**，
+        owner 收不到 `visibility='admin'` 的事件。
+
+        **L1 事件文案禁止暴露系统行为**：不写「触发熔断（连续 5 步无进展）」
+        「由于无进展检测阈值调整为…」，只写业务事实
+        （「我在检索这一步卡住了，因为需要你授权店铺后台」）。
+
+        技术细节保留在 `error_code`（admin 可见），不进owner 文案。
+      properties:
+        seq: { type: integer, description: '单调递增，用于 Last-Event-ID 续传' }
+        event_type: { type: string, example: 'step_completed' }
+        visibility:
+          type: string
+          enum: [owner, admin]
+          default: admin
+          description: |
+            **默认 `admin`（fail-safe 方向）**。新增事件类型若忘记标 `owner`，
+            会落在 admin 侧（安全），而非默认泄漏给老板——默认值方向是这条设计的核心。
+            `owner` 界面绝不出现 `admin` 级事件（原始 prompt / 完整响应体 /
+            重试记录 / token 明细）。SSE 端点在**服务端**按角色过滤，不依赖前端过滤。
+        payload: { type: object, additionalProperties: true }
+        created_at: { type: string, format: date-time }
+
+    CancelResult:
+      type: object
+      description: |
+        **幂等返回**：重复调用返回同一状态，不报错。
+        `status=stopping` 表示已受理；5 秒内未收敛由巡检器强制置 `cancelled`。
+      properties:
+        goal_id: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/GoalStatus' }
+        preserved_steps: { type: integer, description: '已保留的完成步骤数' }
+
+    # ---- 会话 ----
+    Conversation:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        agent_id: { type: string, format: uuid }
+        title: { type: string }
+        created_at: { type: string, format: date-time }
+
+    Message:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        role: { type: string, enum: [user, assistant, system] }
+        content: { type: string }
+        goal_id: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    # ---- 知识 ----
+    KnowledgeSource:
+      type: object
+      description: |
+        **摄取过程对用户可见**：显示「已解析 48 行 / 识别 12 个字段 / 发现 2 处格式不一致」，
+        而不是转圈后显示「完成」。字段级识别结果需用户确认。
+      properties:
+        id: { type: string, format: uuid }
+        filename: { type: string }
+        status: { type: string, enum: [parsing, indexing, ready, failed] }
+        parsed_rows: { type: integer, nullable: true }
+        detected_fields:
+          type: array
+          items: { type: string }
+          nullable: true
+        inconsistencies:
+          type: array
+          items: { type: object, additionalProperties: true }
+          nullable: true
+          description: '含行号，需用户确认'
+        index_complete: { type: boolean, description: 'false 时界面须告知「索引尚未完成，检索可能不全」' }
+        created_at: { type: string, format: date-time }
+
+    SearchHit:
+      type: object
+      properties:
+        source_id: { type: string, format: uuid }
+        chunk_id: { type: string }
+        snippet: { type: string }
+        score: { type: number, format: float }
+
+    # ---- 待确认 ----
+    PendingItem:
+      type: object
+      description: |
+        **只含 `needs_human_input` 类，不含 `circuit_break`。**
+        熔断是系统问题，走任务行内联提示，不占队列名额。
+
+        降频三级只作用于本类（合并同类项 / 降级汇总条）；
+        `circuit_break` 不受降频影响，每次必须可见。
+      properties:
+        id: { type: string, format: uuid }
+        goal_id: { type: string, format: uuid }
+        agent_id: { type: string, format: uuid }
+        reason: { type: string, description: '业务语言，如「我没敢填客户等级」' }
+        evidence:
+          type: array
+          items: { type: object, additionalProperties: true }
+          description: '依据行，供老板判断'
+        options: { type: array, items: { type: string } }
+        created_at: { type: string, format: date-time }
+
+    # ---- 汇报 ----
+    DailyReport:
+      type: object
+      description: |
+        老板每日汇报页（`/`）。**四板块固定顺序不可调**：
+        `做完了` → `要你管` → `我停下来过` → `花的钱`，
+        第五块「算给你看」（人力折算）。
+
+        顺序本身承载信息：先看成绩，再看要处理的，再看协作，最后才看钱。
+
+        **省略比报错更伤信任**——老板无法区分「没活干」和「被跳过了」，
+        所以四板块的空状态规则**刻意各不相同**：
+
+        | 板块 | 空状态 |
+        |------|--------|
+        | ① 做完了 | **不隐藏**，写「今天没有需要产出的活，员工在待命」 |
+        | ② 要你管 | 为 0 时**整个板块不渲染**（不是写「一切正常」——那是噪音） |
+        | ③ 我停下来过 | **必渲染**，为 0 时写「今天没有员工打断你。」 |
+        | ④ 花的钱 | **必渲染**（成本永远存在，即使为 0） |
+
+        **禁用技术语汇**：不出现 调用 / 会话 / 任务 / token / Agent。
+
+        **「我停下来过」是固定板块而非异常日志**——失败是交付内容的一部分。
+
+        `agents` 数组供按员工下钻（`AgentReport`）；顶层四板块供工作台首页直接渲染。
+      properties:
+        report_date: { type: string, format: date }
+        on_duty_count:
+          type: integer
+          description: |
+            在岗人数。**必须先声明总数**（在岗 X / 待命 Y），
+            让老板一眼知道分母。
+        standby_count:
+          type: integer
+          description: |
+            待命人数。**待命员工必须列出姓名 + 原因，禁止省略**。
+            禁用「+2 名待命」式折叠计数——**折叠即等于隐藏**，
+            会让老板误以为漏了人。
+        block1_completed:
+          type: object
+          description: |
+            ① 今天做完了什么。按员工分组，组内按产出时间倒序。
+            无产出时**不隐藏板块**，写「今天没有需要产出的活，员工在待命」。
+          properties:
+            has_content:
+              type: boolean
+              description: 'false 时前端渲染空状态文案而非隐藏板块（0 条必须显式说明）'
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  agent_id: { type: string, format: uuid }
+                  agent_name: { type: string }
+                  summary: { type: string, description: '业务语言一行，禁用技术语汇' }
+                  outputs:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          description: '**真实文件名**——这是「真的干了」的证据'
+                        kind: { type: string, enum: [file, row, record, report] }
+                        size_bytes: { type: integer }
+                        asset_id: { type: string, format: uuid }
+        block2_needs_action:
+          type: object
+          nullable: true
+          description: |
+            ② 要你管。**为 0 时整个板块不渲染**（返回 null，前端不画这一块）。
+            ≥3 条时追加 `Hand` 图标 +「员工已经停下来了」——暗示损失，
+            但**不用 warn 色**（见 PendingItem 的同类约束）。
+          properties:
+            pending_count: { type: integer }
+            agents_stopped: { type: boolean }
+        block3_stopped:
+          type: object
+          description: |
+            ③ 我停下来过。**无论有无都渲染**——
+            它的价值恰恰在于「没发生」这个事实本身可见。
+
+            `total_this_month` **必须来自真实事件流统计**
+            （`task_escalated_to_human` × `escalation_resolved` 配对计数），
+            **禁止硬编码、禁止取整凑数、禁止在无数据时编造**。
+            硬编码或无数据时编造均视为 **P0 缺陷**（信任指标造假等于在信任指标里投毒）。
+          properties:
+            resolved_count: { type: integer }
+            awaiting_count: { type: integer }
+            total_this_month: { type: integer }
+            message:
+              type: string
+              description: |
+                信任闭环文案。为 0 时写「今天没有员工打断你。」——
+                **不用空洞的庆祝文案**。
+        block4_cost:
+          type: object
+          description: |
+            ④ 花的钱。**必渲染**。金额用正文字体不用等宽（等宽数字 = 账单感）。
+            为 0 时写「今天没有产生模型调用费用。」——**不用「¥0.00」这种技术写法**。
+          properties:
+            today_cost_cents: { type: integer }
+            monthly_forecast_cents:
+              type: integer
+              description: '「约 36 元/月」——**老板的决策单位是「月」不是「次」**'
+            saved_minutes_today:
+              type: integer
+              description: '折算人力，**必须由真实数据推算**，禁止虚构'
+        agents:
+          type: array
+          description: 按员工明细，供下钻与「按 AI 员工聚合」视图使用。
+          items: { $ref: '#/components/schemas/AgentReport' }
+        generated_at: { type: string, format: date-time }
+
+    AgentReport:
+      type: object
+      description: |
+        **某员工当日未执行时也必须出现在列表中**，
+        显示「今天没跑成，卡在第 X 步」+ 重试入口，**不得静默跳过**。
+      properties:
+        agent_id: { type: string, format: uuid }
+        agent_name: { type: string }
+        status: { type: string, enum: [completed, partial, stuck, not_run] }
+        done_section:
+          type: object
+          description: '「做完了」板块。无异常时显示「今天没有要我管的」而非隐藏。'
+          additionalProperties: true
+        needs_you_section:
+          type: object
+          description: '「要你管」板块。'
+          additionalProperties: true
+        stopped_section:
+          type: object
+          description: |
+            「我停下来过」板块。**熔断文案只讲业务事实不讲系统行为**。
+          additionalProperties: true
+        cost_section:
+          type: object
+          description: '「花的钱」板块，业务口径。'
+          additionalProperties: true
+        roi_section:
+          type: object
+          description: '「算给你看」。折算参数**必须明示且可改**。'
+          additionalProperties: true
+
+    WeeklyReport:
+      type: object
+      description: |
+        周报。**与日报的关键差异是必须显示积压**——日清模式会系统性掩盖慢性问题。
+      properties:
+        week_start: { type: string, format: date }
+        week_end: { type: string, format: date }
+        agents:
+          type: array
+          items: { $ref: '#/components/schemas/AgentReport' }
+        backlog_count:
+          type: integer
+          description: |
+            **期末仍未处理的积压数**。
+            统计区间 = 本周新增 + 期末仍未处理（不是仅本周新增）。
+        backlog_items:
+          type: array
+          description: '**禁止折叠**——折叠即隐藏，等待天数是升级信号。'
+          items: { $ref: '#/components/schemas/BacklogItem' }
+        trust_summary: { $ref: '#/components/schemas/TrustSummary' }
+        roi:
+          type: object
+          properties:
+            saved_hours: { type: number, nullable: true }
+            baseline_configured: { type: boolean }
+            baseline_minutes_per_run: { type: number, nullable: true }
+            hourly_rate_cny: { type: number, nullable: true }
+            roi_ratio: { type: number, nullable: true }
+
+    BacklogItem:
+      type: object
+      properties:
+        pending_id: { type: string, format: uuid }
+        agent_id: { type: string, format: uuid }
+        agent_name: { type: string }
+        reason: { type: string, description: '业务语言' }
+        waiting_days:
+          type: integer
+          description: '**已等待天数，升级信号。前端禁止折叠隐藏此值。**'
+        created_at: { type: string, format: date-time }
+
+    TrustSummary:
+      type: object
+      description: |
+        信任指标。**禁止硬编码、禁止取整凑数、禁止无数据时编造**。
+        理由：这句话一旦被发现是假的，杀伤力远大于不做。
+
+        数据来源为真实事件配对统计：
+        `task_escalated_to_human`（AI 主动升级给人）× `escalation_resolved`（人工确认完成）。
+
+        **主句规则（按有无未处理项二选一渲染）**：
+
+        | 条件 | 主句 |
+        |------|------|
+        | 全部已处理 | 「本周停下来问过 8 次，每次你都做了决定。它们没有一次是猜的。」 |
+        | 有未处理项 | 「本周停下来问过 8 次，其中 3 次还在等你。」 |
+
+        **未处理项禁止用 success 绿**——绿色会被读成「一切正常」。
+      properties:
+        escalated_count:
+          type: integer
+          description: 本周 `task_escalated_to_human` 次数
+        resolved_count:
+          type: integer
+          description: 其中已 `escalation_resolved` 的次数
+        unresolved_count:
+          type: integer
+          description: '= escalated_count - resolved_count'
+        main_sentence:
+          type: string
+          description: |
+            **由后端按「有无未处理项」二选一生成**，前端不得自行拼接。
+            生成规则见 schema 描述。
+          example: '本周停下来问过 8 次，其中 3 次还在等你。'
+        all_resolved: { type: boolean, description: 供前端选择是否用 success 色' }
+
+    CostBreakdown:
+      type: object
+      description: >-
+        员工维度成本构成，业务口径，无 token。
+        下钻终点：到此为止，不再向 token 级下钻（UIUX §8.1 终裁为「两层到底」）。
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              agent_id: { type: string, format: uuid }
+              agent_name: { type: string }
+              task_count: { type: integer }
+              cost_cents: { type: integer }
+              cost_share_pct:
+                type: number
+                description: 占比。用水平条呈现，禁饼图。
+              trend_pct:
+                type: number
+                nullable: true
+                description: 环比百分比。可空（首月无环比数据）。
+              trend_direction:
+                type: string
+                enum: [up, down, flat]
+                description: >-
+                  涨跌方向。禁止只用颜色表示涨跌，必须同时呈现箭头符号与数值
+                  （同「状态三通道」约束：颜色 + 图标 + 文字）。
+              saved_hours:
+                type: number
+                nullable: true
+                description: 折算人力（小时）。仅当 baseline_configured 为 true 时有值。
+        total_cost_cents: { type: integer }
+        baseline_configured:
+          type: boolean
+          description: >-
+            租户是否已配置人工基线。为 false 时前端不得显示 0
+            （0 会被老板读成「一点时间都没省」），必须显示配置引导。
+        baseline_minutes_per_run:
+          type: number
+          nullable: true
+          description: 人工基线分钟数（租户可配参数）。折算人力 = (基线分钟数 × 运行次数) / 60。
+        zero_cost_agents:
+          type: array
+          description: >-
+            零成本员工必须列出，前端标 Pause + 「今天没有运行」。
+            禁止折叠计数（如「+2 名待命」）—— 折叠即等于隐藏，
+            老板无法区分「没活干」和「被跳过了」。
+          items:
+            type: object
+            properties:
+              agent_id: { type: string, format: uuid }
+              agent_name: { type: string }
+
+    # ---- 用量：两个独立 schema（关键）----
+    OwnerUsageSummary:
+      type: object
+      description: |
+        **owner 口径业务视图。**
+
+        ## 刻意不包含 token / model / duration 字段
+
+        连 nullable 都不行。这是契约层的第一道防线：
+        前端用 `openapi-typescript` 生成的类型里没有这些字段，
+        owner 组件访问它们会**直接编译报错**。
+
+        若改用「同一endpoint 按角色 oneOf」，token 就会出现在本 schema 里
+        只是被 controller 剔除——那泄漏就依赖于「每个人每次都记得剔除」。
+        独立 schema 时泄漏在**结构上不可能发生**。
+
+        数据来源为 `tasks` + `usage_daily` 成本聚合，**不读 `usage_records` 的 token 字段**
+        （第二道防线）。
+      properties:
+        period: { type: string, example: '2026-10' }
+        total_cost_cents: { type: integer }
+        total_task_count: { type: integer }
+        cost_by_agent:
+          type: array
+          items:
+            type: object
+            properties:
+              agent_id: { type: string, format: uuid }
+              agent_name: { type: string }
+              task_count: { type: integer }
+              cost_cents: { type: integer }
+        cost_by_day:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string, format: date }
+              cost_cents: { type: integer }
+        roi:
+          type: object
+          description: |
+            人力折算。**折算必须从真实执行记录聚合，禁止用典型值估算。**
+            理由：折算人力位于决策链末端（成本 → 折算人力 → ROI），
+            **链路上一环造谣，整条链都不可信**。
+
+            `baseline_minutes_per_run` 是**租户可配参数**，不是代码常量。
+            理由同 ROI 口径可配：老板比我们更清楚自己员工处理一批发票要多久，
+            我们替客户断言「省了多少时间」有法律风险。
+
+            `baseline_configured=false` 时前端**必须显示配置引导**
+            （「配置后可看到折算时长」），**不得显示 0**——0 会被读成「没省时间」。
+          properties:
+            saved_hours:
+              type: number
+              nullable: true
+              description: |
+                **可为空**。未配置人工基线时不返回值（而非返回 0）。
+                计算口径：`(baseline_minutes_per_run × 本期运行次数) ÷ 60`
+            baseline_configured:
+              type: boolean
+              description: 前端据此决定显示折算数值还是显示配置引导
+            baseline_minutes_per_run:
+              type: number
+              nullable: true
+              description: 人工基线（分钟/次），**按岗位配置**，租户可改
+            hourly_rate_cny: { type: number, nullable: true, description: '租户可改' }
+            roi_ratio: { type: number, nullable: true, example: 5.67 }
+
+    AdminUsageSummary:
+      type: object
+      description: |
+        admin 口径技术视图，**完整 token 明细与模型构成**。
+        仅admin 角色可见。
+      properties:
+        period: { type: string, example: '2026-10' }
+        total_cost_cents: { type: integer }
+        usage_by_model:
+          type: array
+          items:
+            type: object
+            properties:
+              provider: { $ref: '#/components/schemas/Provider' }
+              model_id: { type: string }
+              input_tokens: { type: integer }
+              output_tokens: { type: integer }
+              task_count: { type: integer }
+              cost_cents: { type: integer }
+        usage_by_agent:
+          type: array
+          items:
+            type: object
+            properties:
+              agent_id: { type: string, format: uuid }
+              input_tokens: { type: integer }
+              output_tokens: { type: integer }
+              cost_cents: { type: integer }
+        budget_trigger_rate: { type: number, format: float, description: '预算触发率' }
+
+    # ---- 计费 ----
+    Budget:
+      type: object
+      properties:
+        agent_id: { type: string, format: uuid }
+        monthly_limit_cents: { type: integer }
+        spent_cents: { type: integer }
+        warning_threshold: { type: integer, default: 80, description: '达 80% 推送预警' }
+        exhausted: { type: boolean }
+
+    # ---- 其他 ----
+    Memory:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        content: { type: string }
+        kind: { type: string, enum: [fact, preference, instruction] }
+        created_at: { type: string, format: date-time }
+
+    WecomConfig:
+      type: object
+      description: '**webhook_url 仅写入，绝不回显**（同凭据原则）。'
+      properties:
+        enabled: { type: boolean }
+        webhook_masked: { type: string, example: 'https://qyapi.weixin.qq.com/****' }
+        group_count: { type: integer }
+
+    EgressEntry:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        domain: { type: string }
+        status: { type: string, enum: [pending_review, approved, rejected] }
+        created_at: { type: string, format: date-time }

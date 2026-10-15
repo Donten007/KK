@@ -1,0 +1,115 @@
+name: sandbox-poc
+
+# 沙箱 POC（SANDBOX-POC.md 20 场景）：放行条件 2 的机器验证。
+# 原则：POC 通过不等于永久通过 —— gVisor/基础镜像升级可能重新引入不兼容，
+# 因此进 nightly 持续验证，不是只跑一次。
+
+on:
+  schedule:
+    - cron: "0 19 * * *" # 每日 UTC 19:00（北京时间 03:00）
+  workflow_dispatch:
+
+jobs:
+  gvisor-poc:
+    name: gVisor runsc 兼容 POC（10 Python + 10 Node）
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 gVisor runsc
+        run: |
+          curl -fsSL https://gvisor.sh/archive.key | sudo gpg --dearmor -o /usr/share/keyrings/gvisor-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/gvisor-archive-keyring.gpg] https://storage.googleapis.com/gvisor/releases release/main main" | sudo tee /etc/apt/sources.list.d/gvisor.list
+          sudo apt-get update && sudo apt-get install -y runsc
+          sudo runsc install
+          sudo systemctl restart docker
+
+      - name: 验证 runsc 生效
+        run: docker info | grep -i runsc
+
+      - name: Python 场景（P1-P10，含限额反向断言 P9/P10）
+        run: |
+          set -o pipefail
+          FAIL=0
+          run_p() {
+            local name="$1"; shift
+            echo "--- P: $name ---"
+            if docker run --rm --runtime=runsc \
+              --memory 2g --pids-limit 128 --ulimit nofile=1024:1024 \
+              python:3.13-slim-bookworm bash -lc "$*" ; then
+              echo "PASS: $name"
+            else
+              echo "FAIL: $name"; FAIL=$((FAIL+1))
+            fi
+          }
+          run_p "P1 纯Python基线"   "python -c 'print(2+2)'"
+          run_p "P2 pysqlite3 C扩展" "python -c 'import sqlite3; c=sqlite3.connect(\":memory:\"); c.execute(\"create table t(x)\"); c.commit(); print(c.execute(\"select count(*) from t\").fetchone())'"
+          run_p "P3 numpy+BLAS"     "pip install -q numpy==2.2.6 && python -c 'import numpy as np; a=np.random.rand(100,100); print(a@a is not None)'"
+          run_p "P4 lxml C扩展"     "pip install -q lxml==5.4.0 && python -c 'from lxml import html; html.fromstring(\"<html><body>x</body></html>\"); print(\"ok\")'"
+          run_p "P5 pip install 纯py" "pip install -q --no-cache-dir six==1.17.0"
+          run_p "P6 pip sdist编译"  "pip install -q --no-binary :all: --no-cache-dir python-dateutil==2.9.0.post0"
+          run_p "P7 multiprocessing" "python -c 'import multiprocessing as m; p=m.Process(target=lambda: None); p.start(); p.join(); print(p.exitcode)'"
+          run_p "P8 subprocess+出网" "python -c 'import subprocess; r=subprocess.run([\"python\",\"-c\",\"import urllib.request;urllib.request.urlopen(\\\"https://example.com\\\",timeout=10)\"]); print(r.returncode)'"
+          run_p "P9 内存超限被拒(反向)" "python -c \"
+try:
+    _ = bytearray(3*1024*1024*1024)
+    print('LIMIT_BROKEN'); exit(1)
+except MemoryError:
+    print('LIMIT_ENFORCED')\""
+          run_p "P10 fd超限被拒(反向)" "python -c \"
+fs=[]
+try:
+    for i in range(2000): fs.append(open('/dev/null','w'))
+    print('LIMIT_BROKEN'); exit(1)
+except OSError:
+    print('LIMIT_ENFORCED')\""
+          echo "PYTHON_FAIL=$FAIL" >> "$GITHUB_ENV"
+
+      - name: Node 场景（N1-N10，含线程 N7 与限额反向 N9）
+        run: |
+          set -o pipefail
+          FAIL=${PYTHON_FAIL:-0}
+          run_n() {
+            local name="$1"; shift
+            echo "--- N: $name ---"
+            if docker run --rm --runtime=runsc \
+              --memory 2g --pids-limit 128 --ulimit nofile=1024:1024 \
+              node:22-slim-bookworm bash -lc "$*" ; then
+              echo "PASS: $name"
+            else
+              echo "FAIL: $name"; FAIL=$((FAIL+1))
+            fi
+          }
+          run_n "N1 纯Node基线"      "node -e 'console.log(2+2)'"
+          run_n "N2 node-gyp编译bcrypt" "bash -lc 'apt-get update -qq && apt-get install -y -qq build-essential python3 >/dev/null && npm install --no-save bcryptjs@3.0.2 >/dev/null && node -e \"const b=require(\\\"bcryptjs\\\");b.hashSync(\\\"x\\\",4);console.log(\\\"ok\\\")\"'"
+          run_n "N3 预编译.node加载"  "npm install --no-save better-sqlite3@11.10.0 >/dev/null && node -e 'const D=require(\"better-sqlite3\"); const d=new D(\":memory:\"); d.exec(\"create table t(x)\"); console.log(\"ok\")'"
+          run_n "N4 optionalDeps回退" "npm install --no-save esbuild@0.25.5 >/dev/null && npx esbuild --version"
+          run_n "N5 child_process.spawn" "node -e 'const{spawnSync}=require(\"child_process\");const r=spawnSync(\"node\",[\"-e\",\"console.log(1)\"]);console.log(r.status)'"
+          run_n "N6 net出网"          "node -e 'require(\"https\").get(\"https://example.com\",res=>{console.log(res.statusCode);process.exit(0)}).on(\"error\",e=>{console.error(e);process.exit(1)})'"
+          run_n "N7 worker_threads"   "node -e 'const{Worker}=require(\"worker_threads\");new Worker(\"console.log(1)\",{eval:true}).on(\"exit\",c=>process.exit(c))'"
+          run_n "N8 npm install 网络+写盘" "cd /tmp && npm init -y >/dev/null && npm install --no-save lodash@4.17.21 >/dev/null && node -e 'require(\"lodash\");console.log(\"ok\")'"
+          run_n "N9 内存超限被拒(反向)" "node -e \"
+try{const a=[];while(true)a.push(new Array(1e6));}catch(e){if(e.message.includes('heap')){console.log('LIMIT_ENFORCED')}else{console.log('LIMIT_BROKEN',e.message);process.exit(1)}}\""
+          run_n "N10 进程数超限被拒(反向)" "bash -lc \"
+count=0
+for i in \\\$(seq 1 300); do
+  sleep 60 & \\\$( [ \\\$? -ne 0 ] && break )
+  count=\\\$((count+1))
+done 2>/dev/null
+jobs -p | xargs -r kill 2>/dev/null
+if [ \\\$count -ge 250 ]; then echo 'LIMIT_BROKEN'; exit 1; else echo \\\"LIMIT_ENFORCED count=\\\$count\\\"; fi\""
+          echo "TOTAL_FAIL=$FAIL" >> "$GITHUB_ENV"
+
+      - name: 判定（SANDBOX-POC.md §三）
+        run: |
+          echo "总失败数: ${TOTAL_FAIL:-?}"
+          if [ "${TOTAL_FAIL:-99}" -eq 0 ]; then
+            echo "全部通过 → 锁 gVisor，POC 结论升 ADR"
+          elif [ "${TOTAL_FAIL:-99}" -le 3 ]; then
+            echo "失败 ≤3 → 锁 gVisor，剔除失败场景对应的包，逐场景复核"
+            exit 1  # 仍需人工核对失败场景是否涉及 C 扩展/子进程/线程
+          else
+            echo "失败 ≥4 → 升 Kata Containers（沙箱执行层预期 0 行改动）"
+            exit 1
+          fi

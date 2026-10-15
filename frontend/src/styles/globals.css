@@ -1,0 +1,136 @@
+/* ==========================================================================
+   全局样式入口
+   --------------------------------------------------------------------------
+   Token 来源唯一：design-system/design-tokens.css（设计师产出，直接引用，不复制）
+   本文件只做三件事：
+     1. 引入设计 Token（含深/浅两套主题变量）
+     2. Tailwind 4 接入，并把语义 Token 映射为 Tailwind 工具类
+     3. 补设计系统未定义、但 Next.js 运行必需的最小基线（字体、滚动条）
+   ========================================================================== */
+
+@import '../../../design-system/design-tokens.css';
+@import 'tailwindcss';
+
+/* --------------------------------------------------------------------------
+   Tailwind 4 主题映射
+   把 CSS 变量接成 Tailwind 工具类，使 className 里不出现任何裸 hex。
+   命名与 design-tokens.json 的 semantic 层一一对应。
+   -------------------------------------------------------------------------- */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-hover: var(--surface-hover);
+
+  --color-fg-1: var(--fg-1);
+  --color-fg-2: var(--fg-2);
+  --color-muted: var(--muted);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-press: var(--accent-press);
+  --color-accent-on: var(--accent-on);
+  --color-accent-bg: var(--accent-bg);
+
+  --color-success: var(--success);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  --color-success-bg: var(--success-bg);
+  --color-warn-bg: var(--warn-bg);
+  --color-danger-bg: var(--danger-bg);
+  --color-info-bg: var(--info-bg);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-border-input: var(--border-input);
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+
+  --shadow-raised: var(--elev-raised);
+}
+
+/* --------------------------------------------------------------------------
+   基线
+   -------------------------------------------------------------------------- */
+html {
+  color-scheme: dark;
+  background-color: var(--bg);
+}
+
+/* 字体桥接：next/font 注入 --font-inter / --font-jetbrains-mono，
+   而 design-tokens 的 --font-body 声明的是字族名。这里把两者接起来，
+   自引用右侧取的是 :root 继承下来的值，不是自身 —— CSS 规范如此解析。 */
+body {
+  --font-display: var(--font-inter, 'Inter'), var(--font-display);
+  --font-body: var(--font-inter, 'Inter'), var(--font-body);
+  --font-mono: var(--font-jetbrains-mono, 'JetBrains Mono'), var(--font-mono);
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--fg-1);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--lh-base);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* 计量数字统一：需要纵向比对的金额/百分比必须走这里（UIUX §8.1 数字对齐纪律） */
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* 滚动条：跟随 surface 层，不引入第三种灰 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* 状态图标：运行中 / 正在中止 两个旋转态（design-tokens state.map） */
+@keyframes evo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.icon-spin {
+  animation: evo-spin var(--progress-loop) linear infinite;
+}
+
+/* reduced-motion 下由 design-tokens.css 统一降级，此处仅确保静态可读 */
+@media (prefers-reduced-motion: reduce) {
+  .icon-spin {
+    animation: none;
+  }
+}
+
+/* Next.js 开发态浮标会遮挡左下角内容，Phase 2 骨架期关闭 */
+.nextjs-portal {
+  display: none;
+}

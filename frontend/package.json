@@ -1,0 +1,37 @@
+{
+  "name": "evowork-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EvoWork — AI 员工 SaaS 控制台前端",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit",
+    "verify:p0": "bash scripts/verify-p0.sh",
+    "verify": "npm run lint && npm run type-check && npm run verify:p0",
+    "types:api": "openapi-typescript ../docs/openapi.yaml -o src/types/api.d.ts"
+  },
+  "dependencies": {
+    "lucide-react": "1.57.0",
+    "next": "16.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "3.3.7",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.0",
+    "openapi-typescript": "7.13.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3"
+  }
+}
