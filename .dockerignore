@@ -1,0 +1,17 @@
+# 仓库根 .dockerignore —— 供以仓库根为构建上下文的镜像构建兜底
+# （当前唯一此类构建：docker build -f frontend/Dockerfile .）
+# 注：BuildKit 会优先读取 frontend/Dockerfile.dockerignore，本文件为非 BuildKit 构建器兜底。
+frontend/node_modules/
+frontend/.next/
+frontend/tsconfig.tsbuildinfo
+frontend/coverage/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+backend/
+_research/
+**/__pycache__/
+*.log
+.DS_Store
+Thumbs.db
+.git/

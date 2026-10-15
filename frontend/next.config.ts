@@ -16,6 +16,9 @@ const projectDir = path.dirname(fileURLToPath(import.meta.url));
  */
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // 容器化硬要求：`next build` 产出 .next/standalone（自包含 server.js），
+  // 供 Dockerfile runtime 阶段直接 `node server.js` 启动，无需 node_modules。
+  output: 'standalone',
   turbopack: {
     root: path.resolve(projectDir, '..'),
   },

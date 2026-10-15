@@ -1,0 +1,18 @@
+# 镜像内不需要的目录与文件（构建上下文 = backend/）
+tests/
+data/
+scripts/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.env
+.env.local
+.env.*.local
+*.log
+Dockerfile
+.dockerignore

@@ -1,0 +1,20 @@
+# BuildKit 专用：与本 Dockerfile 同目录（frontend/），构建上下文 = 仓库根。
+# docker build -f frontend/Dockerfile . 时优先于根 .dockerignore 生效。
+frontend/node_modules/
+frontend/.next/
+frontend/tsconfig.tsbuildinfo
+frontend/coverage/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+backend/
+_research/
+docs/
+design-system/**/*.md
+node_modules/
+.next/
+**/__pycache__/
+*.log
+.DS_Store
+Thumbs.db
+.git/
