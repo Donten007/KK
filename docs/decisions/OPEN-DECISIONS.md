@@ -134,3 +134,6 @@
 | 宿主机文件系统访问 | SaaS 服务器共享，能访问文件系统 = 跨租户数据泄露。**架构上绝对禁止，非难度问题** |
 | 本地模型推理 | 云 GPU 持续成本，形态不匹配 |
 | 托盘常驻 / 本地剪贴板 / 系统级文件锁 / SQLite 零配置 | 桌面应用特性，Web SaaS 客户端本身不具备 |
+| Date | Source | Open Item | Related Constraints | Current Leaning | Blocked By | Resolves When | Status |
+|------|--------|-----------|---------------------|-----------------|------------|---------------|--------|
+| 2026-10-15 | sandbox-poc | gVisor 资源限额（memory/pids）在 GitHub runner 无法机器验证；部署阶段必须在生产同构环境复跑 P9/N9/N10，不生效则切 Kata | ADR-004 五层防护；SANDBOX-POC.md §四 | 生产主机自控，systemd-cgroup 可正确配置 | Phase 4 部署 | 部署环境反向断言通过 | OPEN |

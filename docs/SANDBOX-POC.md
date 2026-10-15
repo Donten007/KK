@@ -131,3 +131,27 @@ done
 **POC 通过不等于永久通过。** gVisor 自身版本升级、基础镜像升级（`python:3.13-slim` → `3.14-slim`）都可能重新引入不兼容。
 
 **约束**：每次升级 gVisor 或基础镜像，**必须重跑这 20 个场景**。加进 CI 的 nightly  job，不是只跑一次。
+
+## 四、POC 实测结论（2026-10-15，GitHub Actions 七轮迭代）
+
+**最终结果：兼容性 18/18 全绿 → 锁定 gVisor**；资源限额 3 条反向断言移交部署阶段门禁。
+
+| 项 | 结果 |
+|----|------|
+| Python 功能场景（P1-P8）| ✅ 全过（C 扩展/BLAS/多进程/pip sdist 编译/subprocess+出网）|
+| Node 功能场景（N1-N8）| ✅ 全过（npm 工具链/预编译 .node/optionalDeps 回退/worker_threads/出网）|
+| fd 限额（P10）| ✅ ulimit 生效 |
+| 内存限额（P9/N9）| ⏸ CI runner 上不生效 → **部署阶段必须复验** |
+| 进程数限额（N10）| ⏸ 同上 |
+
+### 过程中修掉的环境坑（防重蹈）
+1. `gvisor.sh` 域名已废弃（runner DNS 持续解析失败）→ key 改从 `gvisor.dev/archive.key`
+2. 2026-07 起 gVisor 多文件发布，旧单二进制 URL 全 404 → apt 或 gvisor.tar.zstd
+3. Node 镜像 tag 是 `node:22-bookworm-slim`（`22-slim-bookworm` 不存在）
+4. P9 内存断言必须逐页写非零（全零数组被零页优化，假阴性）
+
+### 遗留：限额移交部署阶段门禁（OPEN-DECISIONS 挂账）
+runsc `--systemd-cgroup` 已配置，CI runner 上 docker `--memory/--pids-limit` 对 gVisor 容器仍不生效
+（gvisor #10264 同族问题，与 runner 的 cgroup 驱动配置相关）。**生产部署时必须在同构环境复跑
+P9/N9/N10 三条反向断言，限额不生效不得上线**；若生产同构环境仍不生效，执行 Kata Containers
+备选（沙箱执行层预期 0 行改动，ADR-004 预留）。
