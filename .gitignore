@@ -38,3 +38,4 @@ Thumbs.db
 *.log
 coverage/
 htmlcov/
+jobs_tmp.json
