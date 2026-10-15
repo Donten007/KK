@@ -20,11 +20,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 安装 gVisor runsc
+      - name: 安装 gVisor runsc（带重试：runner DNS 瞬断曾致首跑失败）
         run: |
-          curl -fsSL https://gvisor.sh/archive.key | sudo gpg --dearmor -o /usr/share/keyrings/gvisor-archive-keyring.gpg
+          curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+            https://gvisor.sh/archive.key | sudo gpg --dearmor -o /usr/share/keyrings/gvisor-archive-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/gvisor-archive-keyring.gpg] https://storage.googleapis.com/gvisor/releases release/main main" | sudo tee /etc/apt/sources.list.d/gvisor.list
-          sudo apt-get update && sudo apt-get install -y runsc
+          sudo apt-get update -o Acquire::Retries=5 && sudo apt-get install -y runsc
           sudo runsc install
           sudo systemctl restart docker
 
